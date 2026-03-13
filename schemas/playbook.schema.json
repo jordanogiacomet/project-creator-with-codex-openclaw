@@ -1,0 +1,391 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openclaw.local/schemas/playbook.schema.json",
+  "title": "OpenClaw Playbook Schema",
+  "description": "Structural contract for repository playbooks used to drive V0 discovery and bootstrap generation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "name",
+    "purpose",
+    "archetype_identity",
+    "detection_hints",
+    "defaults",
+    "guided_questions",
+    "critical_confirmations",
+    "required_artifacts",
+    "initial_directory_structure",
+    "initial_story_seed",
+    "stop_condition",
+    "handoff_context"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "#/$defs/kebabIdentifier",
+      "description": "Stable repository identifier for the playbook."
+    },
+    "name": {
+      "$ref": "#/$defs/nonEmptyString",
+      "description": "Human-readable playbook name."
+    },
+    "purpose": {
+      "$ref": "#/$defs/nonEmptyString",
+      "description": "Short explanation of what the playbook is meant to guide."
+    },
+    "archetype_identity": {
+      "$ref": "#/$defs/archetypeIdentity",
+      "description": "Identity block describing the target stack."
+    },
+    "detection_hints": {
+      "$ref": "#/$defs/detectionHints",
+      "description": "Discovery cues used to match free-text input to the playbook."
+    },
+    "defaults": {
+      "$ref": "#/$defs/defaults",
+      "description": "Bootstrap defaults, including the validation commands expected for the generated project."
+    },
+    "guided_questions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/guidedQuestion"
+      },
+      "description": "Guided discovery questions for missing context."
+    },
+    "critical_confirmations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/criticalConfirmation"
+      },
+      "description": "Critical decisions that must never be silently assumed."
+    },
+    "required_artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/nonEmptyString"
+      },
+      "allOf": [
+        {
+          "contains": {
+            "const": "PRD.md"
+          }
+        },
+        {
+          "contains": {
+            "const": "prd.json"
+          }
+        },
+        {
+          "contains": {
+            "const": "decisions.md"
+          }
+        },
+        {
+          "contains": {
+            "const": "progress.txt"
+          }
+        },
+        {
+          "contains": {
+            "const": "AGENTS.md"
+          }
+        },
+        {
+          "contains": {
+            "const": "README.md"
+          }
+        },
+        {
+          "contains": {
+            "const": ".env.example"
+          }
+        },
+        {
+          "contains": {
+            "const": "docker-compose.yml"
+          }
+        },
+        {
+          "contains": {
+            "const": "project folder structure"
+          }
+        },
+        {
+          "contains": {
+            "const": "initial stories"
+          }
+        }
+      ],
+      "description": "Required bootstrap artifacts for a valid V0 playbook."
+    },
+    "initial_directory_structure": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/directoryEntry"
+      },
+      "description": "Directory structure to seed in the generated repository."
+    },
+    "initial_story_seed": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/storySeed"
+      },
+      "description": "Initial backlog items expected after bootstrap."
+    },
+    "stop_condition": {
+      "$ref": "#/$defs/stopCondition",
+      "description": "Rules that force the initializer to stop before implementation."
+    },
+    "handoff_context": {
+      "$ref": "#/$defs/handoffContext",
+      "description": "Review and ownership context for the post-bootstrap handoff."
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "kebabIdentifier": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "snakeIdentifier": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:_[a-z0-9]+)*$"
+    },
+    "archetypeIdentity": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/$defs/nonEmptyString"
+      }
+    },
+    "detectionHints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "keywords",
+        "example_intents",
+        "required_stack_signals"
+      ],
+      "properties": {
+        "keywords": {
+          "$ref": "#/$defs/nonEmptyStringArray"
+        },
+        "example_intents": {
+          "$ref": "#/$defs/nonEmptyStringArray"
+        },
+        "required_stack_signals": {
+          "$ref": "#/$defs/nonEmptyStringArray"
+        }
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "database",
+        "deploy_target",
+        "validation",
+        "output_directory_mode"
+      ],
+      "properties": {
+        "database": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "deploy_target": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "validation": {
+          "$ref": "#/$defs/nonEmptyStringArray"
+        },
+        "output_directory_mode": {
+          "const": "new_directory"
+        }
+      }
+    },
+    "guidedQuestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "category",
+        "prompt",
+        "required"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/snakeIdentifier"
+        },
+        "category": {
+          "$ref": "#/$defs/snakeIdentifier"
+        },
+        "prompt": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "default": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        }
+      }
+    },
+    "criticalConfirmation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "prompt",
+        "required",
+        "must_not_be_silently_assumed"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/snakeIdentifier"
+        },
+        "prompt": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "required": {
+          "const": true
+        },
+        "must_not_be_silently_assumed": {
+          "const": true
+        }
+      }
+    },
+    "directoryEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "purpose"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "purpose": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "storySeed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "outcome"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Z0-9]+-[0-9]{3}$"
+        },
+        "title": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "outcome": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "stopCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stop_before_implementation",
+        "description",
+        "must_not_continue_into"
+      ],
+      "properties": {
+        "stop_before_implementation": {
+          "const": true
+        },
+        "description": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "must_not_continue_into": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          },
+          "allOf": [
+            {
+              "contains": {
+                "const": "feature implementation"
+              }
+            },
+            {
+              "contains": {
+                "const": "production deployment"
+              }
+            },
+            {
+              "contains": {
+                "const": "production access"
+              }
+            },
+            {
+              "contains": {
+                "const": "automatic handoff without human review"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "handoffContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "review_required",
+        "discovery_phase_owner",
+        "implementation_phase_owner",
+        "reviewer_checklist"
+      ],
+      "properties": {
+        "review_required": {
+          "const": true
+        },
+        "discovery_phase_owner": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "implementation_phase_owner": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "reviewer_checklist": {
+          "$ref": "#/$defs/nonEmptyStringArray"
+        }
+      }
+    },
+    "nonEmptyStringArray": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/nonEmptyString"
+      }
+    }
+  }
+}

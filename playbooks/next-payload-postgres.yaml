@@ -1,0 +1,187 @@
+# First V0 playbook for OpenClaw Project Initializer.
+# This remains a human-readable contract until formal schema validation exists.
+
+id: next-payload-postgres
+name: Next.js + Payload + PostgreSQL
+purpose: >
+  Guide discovery and bootstrap generation for content and admin projects that
+  use Next.js, Payload, and PostgreSQL in V0.
+
+archetype_identity:
+  framework: next.js
+  cms: payload
+  database: postgresql
+
+detection_hints:
+  keywords:
+    - next.js
+    - next
+    - payload
+    - postgres
+    - postgresql
+    - admin
+    - cms
+    - editorial
+    - content
+    - media
+    - internal users
+  example_intents:
+    - Build an admin with Next, Payload, and Postgres for content, internal users, and media.
+  required_stack_signals:
+    - Next.js
+    - Payload
+    - PostgreSQL
+
+defaults:
+  database: postgresql
+  deploy_target: docker
+  validation:
+    - lint
+    - typecheck
+    - build
+  output_directory_mode: new_directory
+
+guided_questions:
+  - id: project_identity
+    category: project_identity
+    prompt: What is the project name and one-sentence summary?
+    required: true
+  - id: product_surface
+    category: product_type
+    prompt: Is this bootstrap for an internal admin only, or for an admin plus a public-facing site?
+    required: true
+  - id: stack_confirmation
+    category: stack_confirmation
+    prompt: Confirm that the target stack is Next.js + Payload + PostgreSQL.
+    required: true
+  - id: deploy_target
+    category: deploy_target
+    prompt: Is the default Docker runtime acceptable?
+    required: true
+    default: docker
+  - id: content_model
+    category: content_model
+    prompt: Which collections, globals, and media types need to exist in the initial project definition?
+    required: true
+  - id: roles_and_access
+    category: auth_and_authorization
+    prompt: Which roles are needed, and is authentication limited to internal users or extended to end users?
+    required: true
+  - id: storage_requirements
+    category: storage
+    prompt: What storage expectations exist for media and uploads?
+    required: true
+  - id: editorial_workflows
+    category: common_architecture_choices
+    prompt: Are draft/publish, preview, scheduled publishing, or approval workflows required?
+    required: true
+  - id: system_constraints
+    category: system_design
+    prompt: Are there system design constraints such as integration boundaries, custom APIs, or separation between admin and public surfaces?
+    required: true
+  - id: scalability_expectations
+    category: scalability_expectations
+    prompt: What scale, traffic, and team-size expectations should shape the bootstrap defaults?
+    required: true
+  - id: non_functional_constraints
+    category: non_functional_constraints
+    prompt: Are there security, compliance, performance, or observability constraints that must appear in the generated docs?
+    required: true
+
+critical_confirmations:
+  - id: multi_tenancy
+    prompt: Should the project assume multi-tenant data and access boundaries?
+    required: true
+    must_not_be_silently_assumed: true
+  - id: end_user_auth
+    prompt: Does the system require authentication for end users in addition to internal admins?
+    required: true
+    must_not_be_silently_assumed: true
+  - id: public_signup
+    prompt: Should public user signup exist?
+    required: true
+    must_not_be_silently_assumed: true
+  - id: storage_backend
+    prompt: Is local-first storage acceptable, or must another backend be planned now?
+    required: true
+    must_not_be_silently_assumed: true
+  - id: audit_logging
+    prompt: Are audit logs required for admin or content actions?
+    required: true
+    must_not_be_silently_assumed: true
+  - id: preview_workflow
+    prompt: Is preview required for unpublished content?
+    required: true
+    must_not_be_silently_assumed: true
+  - id: draft_publish_workflow
+    prompt: Is a draft/publish workflow required?
+    required: true
+    must_not_be_silently_assumed: true
+  - id: background_jobs
+    prompt: Are background jobs or asynchronous workers required?
+    required: true
+    must_not_be_silently_assumed: true
+  - id: i18n
+    prompt: Is multi-language content required?
+    required: true
+    must_not_be_silently_assumed: true
+
+required_artifacts:
+  - PRD.md
+  - prd.json
+  - decisions.md
+  - progress.txt
+  - AGENTS.md
+  - README.md
+  - .env.example
+  - docker-compose.yml
+  - project folder structure
+  - initial stories
+
+initial_directory_structure:
+  - path: src/app/
+    purpose: Next.js routes, layouts, and route groups for the generated project.
+  - path: src/payload/collections/
+    purpose: Payload collection definitions.
+  - path: src/payload/globals/
+    purpose: Payload global definitions.
+  - path: public/
+    purpose: Public static assets.
+  - path: docs/stories/
+    purpose: Generated story backlog for later Codex + Ralph loop execution.
+
+initial_story_seed:
+  - id: BOOT-001
+    title: Review generated bootstrap and runtime assumptions
+    outcome: Confirm the generated docs, docker defaults, and approved architecture answers before implementation begins.
+  - id: BOOT-002
+    title: Define Payload collections and globals
+    outcome: Turn the approved content model into explicit collection and global definitions.
+  - id: BOOT-003
+    title: Configure roles and authentication boundaries
+    outcome: Implement the approved internal roles and any confirmed end-user auth boundary.
+  - id: BOOT-004
+    title: Configure media handling and storage
+    outcome: Implement uploads, media collections, and the approved storage backend.
+  - id: BOOT-005
+    title: Add editorial workflows only where approved
+    outcome: Implement draft/publish, preview, audit logging, or jobs only if confirmed during discovery.
+
+stop_condition:
+  stop_before_implementation: true
+  description: Stop after generating the bootstrap package, folder structure, and initial story backlog.
+  must_not_continue_into:
+    - feature implementation
+    - production deployment
+    - production access
+    - automatic handoff without human review
+
+handoff_context:
+  review_required: true
+  discovery_phase_owner: OpenClaw with a local model
+  implementation_phase_owner: Codex with GPT-5.4 after explicit human approval
+  reviewer_checklist:
+    - Confirm the archetype match and resolved project summary.
+    - Review all answers to guided questions and critical confirmations.
+    - Review the generated PRD, decisions, progress log, README, and story backlog.
+    - Approve implementation explicitly before Codex + Ralph loop begins.

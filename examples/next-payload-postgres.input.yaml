@@ -1,0 +1,98 @@
+playbook_id: next-payload-postgres
+
+guided_answers:
+  project_identity:
+    name: Editorial Control Center
+    slug: editorial-control-center
+    summary: Internal editorial control center for content, media, and newsroom operations.
+
+  product_surface:
+    mode: admin_plus_public_site
+    notes: The bootstrap should support an internal admin and a public content surface from the same repository.
+
+  stack_confirmation:
+    confirmed: true
+    notes: The requested stack remains Next.js, Payload, and PostgreSQL.
+
+  deploy_target:
+    runtime: docker
+    notes: Docker is acceptable for local development and the first deploy plan.
+
+  content_model:
+    collections:
+      - name: pages
+        purpose: Manage landing pages and evergreen public site content.
+      - name: posts
+        purpose: Manage news and editorial articles.
+      - name: authors
+        purpose: Manage author profiles referenced by posts.
+      - name: media
+        purpose: Manage uploaded images and downloadable files.
+    globals:
+      - name: site-settings
+        purpose: Store navigation, SEO defaults, and shared site metadata.
+      - name: homepage
+        purpose: Store homepage hero content and featured editorial slots.
+    media:
+      - kind: image
+        purpose: Support hero images, thumbnails, and inline article media.
+      - kind: document
+        purpose: Support downloadable PDF attachments and press resources.
+
+  roles_and_access:
+    admin_roles:
+      - name: admin
+        responsibility: Manage system configuration, users, and content operations.
+      - name: editor
+        responsibility: Draft and publish editorial content.
+      - name: reviewer
+        responsibility: Review submissions and approve content before publish.
+    internal_users_only: true
+    end_user_auth_enabled: false
+    notes: Admin access is limited to internal staff and public readers do not authenticate in V0.
+
+  storage_requirements:
+    upload_backend: local_filesystem
+    expected_media_volume: moderate
+    notes: Local-first storage is acceptable initially as long as a later backend swap stays possible.
+
+  editorial_workflows:
+    draft_publish: true
+    preview: true
+    scheduled_publishing: false
+    approvals_required: true
+    notes: Editors draft, reviewers approve, and approved content can be previewed before publishing.
+
+  system_constraints:
+    integration_boundaries:
+      - Payload owns editorial data and media metadata.
+      - Next.js owns public rendering and route-group separation.
+    custom_apis:
+      - Webhook endpoint for cache revalidation after publish events.
+    surface_separation: Keep admin routes and public routes in one repository with explicit route separation.
+
+  scalability_expectations:
+    expected_team_size: small editorial team
+    traffic_profile: moderate public traffic with editorial spikes around campaigns
+    notes: Start simple for a small team, but leave room for public traffic growth.
+
+  non_functional_constraints:
+    security:
+      - Enforce role-based access for admin actions.
+    compliance:
+      - No special compliance regime is identified for V0.
+    performance:
+      - Optimize public page caching and media delivery.
+    observability:
+      - Capture basic logs for admin activity and publishing events.
+
+critical_confirmations:
+  multi_tenancy: false
+  end_user_auth: false
+  public_signup: false
+  storage_backend: local_first
+  audit_logging: true
+  preview_workflow: true
+  draft_publish_workflow: true
+  background_jobs: false
+  i18n: false

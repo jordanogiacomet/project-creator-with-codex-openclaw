@@ -1,0 +1,447 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openclaw.local/schemas/bootstrap-input.schema.json",
+  "title": "OpenClaw Bootstrap Input Schema",
+  "description": "Resolved discovery-state contract for bootstrap generation in V0. This schema stores project-specific answers and confirmed decisions, while archetype rules remain in the selected playbook.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "playbook_id",
+    "guided_answers",
+    "critical_confirmations"
+  ],
+  "properties": {
+    "playbook_id": {
+      "const": "next-payload-postgres",
+      "description": "Selected playbook for the resolved V0 discovery session."
+    },
+    "guided_answers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_identity",
+        "product_surface",
+        "stack_confirmation",
+        "deploy_target",
+        "content_model",
+        "roles_and_access",
+        "storage_requirements",
+        "editorial_workflows",
+        "system_constraints",
+        "scalability_expectations",
+        "non_functional_constraints"
+      ],
+      "properties": {
+        "project_identity": {
+          "$ref": "#/$defs/projectIdentity",
+          "description": "Resolved answer for the project name, slug, and summary."
+        },
+        "product_surface": {
+          "$ref": "#/$defs/productSurface",
+          "description": "Resolved answer for the project surface boundary."
+        },
+        "stack_confirmation": {
+          "$ref": "#/$defs/stackConfirmation",
+          "description": "Explicit confirmation that the selected archetype matches the intended stack."
+        },
+        "deploy_target": {
+          "$ref": "#/$defs/deployTarget",
+          "description": "Resolved answer for the initial runtime target."
+        },
+        "content_model": {
+          "$ref": "#/$defs/contentModel",
+          "description": "Resolved content structure to seed in generated docs and backlog."
+        },
+        "roles_and_access": {
+          "$ref": "#/$defs/rolesAndAccess",
+          "description": "Resolved roles and authentication boundary for the project."
+        },
+        "storage_requirements": {
+          "$ref": "#/$defs/storageRequirements",
+          "description": "Resolved media and upload storage expectations."
+        },
+        "editorial_workflows": {
+          "$ref": "#/$defs/editorialWorkflows",
+          "description": "Resolved editorial workflow expectations."
+        },
+        "system_constraints": {
+          "$ref": "#/$defs/systemConstraints",
+          "description": "Resolved system design constraints and integration boundaries."
+        },
+        "scalability_expectations": {
+          "$ref": "#/$defs/scalabilityExpectations",
+          "description": "Resolved scale assumptions that influence bootstrap defaults."
+        },
+        "non_functional_constraints": {
+          "$ref": "#/$defs/nonFunctionalConstraints",
+          "description": "Resolved non-functional requirements for generated docs."
+        }
+      }
+    },
+    "critical_confirmations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "multi_tenancy",
+        "end_user_auth",
+        "public_signup",
+        "storage_backend",
+        "audit_logging",
+        "preview_workflow",
+        "draft_publish_workflow",
+        "background_jobs",
+        "i18n"
+      ],
+      "properties": {
+        "multi_tenancy": {
+          "type": "boolean",
+          "description": "Whether multi-tenant data and access boundaries are approved."
+        },
+        "end_user_auth": {
+          "type": "boolean",
+          "description": "Whether end-user authentication beyond internal admins is approved."
+        },
+        "public_signup": {
+          "type": "boolean",
+          "description": "Whether public signup is approved."
+        },
+        "storage_backend": {
+          "enum": [
+            "local_first",
+            "plan_external_backend_now"
+          ],
+          "description": "Resolved storage-backend direction after explicit confirmation."
+        },
+        "audit_logging": {
+          "type": "boolean",
+          "description": "Whether audit logging is required."
+        },
+        "preview_workflow": {
+          "type": "boolean",
+          "description": "Whether preview for unpublished content is required."
+        },
+        "draft_publish_workflow": {
+          "type": "boolean",
+          "description": "Whether a draft/publish workflow is required."
+        },
+        "background_jobs": {
+          "type": "boolean",
+          "description": "Whether background jobs or async workers are required."
+        },
+        "i18n": {
+          "type": "boolean",
+          "description": "Whether multi-language content is required."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "kebabIdentifier": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "stringList": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/nonEmptyString"
+      }
+    },
+    "namedPurposeEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "purpose"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "purpose": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "projectIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "slug",
+        "summary"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "slug": {
+          "$ref": "#/$defs/kebabIdentifier"
+        },
+        "summary": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "productSurface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "internal_admin_only",
+            "admin_plus_public_site"
+          ]
+        },
+        "notes": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "stackConfirmation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "confirmed"
+      ],
+      "properties": {
+        "confirmed": {
+          "const": true
+        },
+        "notes": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "deployTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runtime"
+      ],
+      "properties": {
+        "runtime": {
+          "const": "docker"
+        },
+        "notes": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "contentModel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "collections",
+        "globals",
+        "media"
+      ],
+      "properties": {
+        "collections": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/namedPurposeEntry"
+          }
+        },
+        "globals": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/namedPurposeEntry"
+          }
+        },
+        "media": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/mediaEntry"
+          }
+        }
+      }
+    },
+    "mediaEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "purpose"
+      ],
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "purpose": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "roleEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "responsibility"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "responsibility": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "rolesAndAccess": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "admin_roles",
+        "internal_users_only",
+        "end_user_auth_enabled"
+      ],
+      "properties": {
+        "admin_roles": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/roleEntry"
+          }
+        },
+        "internal_users_only": {
+          "type": "boolean"
+        },
+        "end_user_auth_enabled": {
+          "type": "boolean"
+        },
+        "notes": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "storageRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "upload_backend",
+        "expected_media_volume"
+      ],
+      "properties": {
+        "upload_backend": {
+          "enum": [
+            "local_filesystem",
+            "s3_compatible",
+            "other"
+          ]
+        },
+        "expected_media_volume": {
+          "enum": [
+            "low",
+            "moderate",
+            "high"
+          ]
+        },
+        "notes": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "editorialWorkflows": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "draft_publish",
+        "preview",
+        "scheduled_publishing",
+        "approvals_required"
+      ],
+      "properties": {
+        "draft_publish": {
+          "type": "boolean"
+        },
+        "preview": {
+          "type": "boolean"
+        },
+        "scheduled_publishing": {
+          "type": "boolean"
+        },
+        "approvals_required": {
+          "type": "boolean"
+        },
+        "notes": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "systemConstraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "integration_boundaries",
+        "custom_apis",
+        "surface_separation"
+      ],
+      "properties": {
+        "integration_boundaries": {
+          "$ref": "#/$defs/stringList"
+        },
+        "custom_apis": {
+          "$ref": "#/$defs/stringList"
+        },
+        "surface_separation": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "scalabilityExpectations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expected_team_size",
+        "traffic_profile"
+      ],
+      "properties": {
+        "expected_team_size": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "traffic_profile": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "notes": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "nonFunctionalConstraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "security",
+        "compliance",
+        "performance",
+        "observability"
+      ],
+      "properties": {
+        "security": {
+          "$ref": "#/$defs/stringList"
+        },
+        "compliance": {
+          "$ref": "#/$defs/stringList"
+        },
+        "performance": {
+          "$ref": "#/$defs/stringList"
+        },
+        "observability": {
+          "$ref": "#/$defs/stringList"
+        }
+      }
+    }
+  }
+}
