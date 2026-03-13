@@ -10,10 +10,15 @@ from initializer.synthesis.architecture import synthesize_architecture
 from initializer.synthesis.stories import generate_stories
 
 from initializer.engine.capability_engine import apply_capabilities
+from initializer.engine.risk_engine import analyze_risks
+from initializer.engine.design_system_engine import generate_design_system
 
 from initializer.renderers.prd_renderer import render_prd
 from initializer.renderers.stories_renderer import write_stories
 from initializer.renderers.architecture_renderer import write_architecture
+from initializer.renderers.risks_renderer import write_risks
+from initializer.renderers.design_system_renderer import write_design_system
+
 from initializer.renderers.project_files import (
     write_basic_files,
     write_agents,
@@ -22,6 +27,11 @@ from initializer.renderers.project_files import (
 )
 
 OUTPUT_DIR = Path("output")
+
+
+# --------------------------------------------------
+# CLI INPUT HELPERS
+# --------------------------------------------------
 
 
 def prompt_text(label, default=None):
@@ -41,7 +51,9 @@ def prompt_choice(label, options, default_index=0):
     print(label)
 
     for i, opt in enumerate(options, 1):
+
         marker = " (default)" if i - 1 == default_index else ""
+
         print(f"  {i}. {opt}{marker}")
 
     value = input("> ").strip()
@@ -64,6 +76,11 @@ def prompt_boolean(label, default):
     return value in ["y", "yes", "true"]
 
 
+# --------------------------------------------------
+# FILESYSTEM HELPERS
+# --------------------------------------------------
+
+
 def ensure_output_dir():
 
     OUTPUT_DIR.mkdir(exist_ok=True)
@@ -76,6 +93,11 @@ def create_project_dir(slug):
     project_dir.mkdir(parents=True, exist_ok=True)
 
     return project_dir
+
+
+# --------------------------------------------------
+# DISCOVERY
+# --------------------------------------------------
 
 
 def collect_input():
@@ -128,6 +150,11 @@ def collect_input():
     return raw_prompt, archetype, playbook, answers
 
 
+# --------------------------------------------------
+# MAIN PIPELINE
+# --------------------------------------------------
+
+
 def run_new_project(spec=None):
 
     ensure_output_dir()
@@ -138,6 +165,10 @@ def run_new_project(spec=None):
 
     project_dir = create_project_dir(slug)
 
+    # --------------------------------------------------
+    # BUILD SEMANTIC SPEC
+    # --------------------------------------------------
+
     spec = build_semantic_spec(
         raw_prompt,
         archetype,
@@ -145,13 +176,25 @@ def run_new_project(spec=None):
         answers,
     )
 
+    # --------------------------------------------------
+    # ARCHITECTURE SYNTHESIS
+    # --------------------------------------------------
+
     architecture = synthesize_architecture(spec, playbook)
 
     spec["architecture"] = architecture
 
+    # --------------------------------------------------
+    # STORY GENERATION
+    # --------------------------------------------------
+
     stories = generate_stories(spec, architecture)
 
     spec["stories"] = stories
+
+    # --------------------------------------------------
+    # CAPABILITY ENGINE
+    # --------------------------------------------------
 
     architecture, stories, capabilities = apply_capabilities(spec)
 
@@ -159,9 +202,43 @@ def run_new_project(spec=None):
     spec["stories"] = stories
     spec["capabilities"] = capabilities
 
+    # --------------------------------------------------
+    # RISK ENGINE
+    # --------------------------------------------------
+
+    risks = analyze_risks(spec)
+
+    spec["risks"] = risks
+
+    # --------------------------------------------------
+    # DESIGN SYSTEM ENGINE
+    # --------------------------------------------------
+
+    design_system = generate_design_system(spec)
+
+    spec["design_system"] = design_system
+
+    # --------------------------------------------------
+    # WRITE SEMANTIC SPEC
+    # --------------------------------------------------
+
     write_spec(spec, project_dir)
 
+    # --------------------------------------------------
+    # BASE PROJECT FILES
+    # --------------------------------------------------
+
     write_basic_files(project_dir)
+
+    write_agents(project_dir)
+
+    write_progress(project_dir)
+
+    write_decisions(project_dir)
+
+    # --------------------------------------------------
+    # DOCUMENTATION
+    # --------------------------------------------------
 
     prd = render_prd(spec)
 
@@ -171,11 +248,13 @@ def run_new_project(spec=None):
 
     write_architecture(project_dir, spec["architecture"])
 
-    write_agents(project_dir)
+    write_risks(project_dir, spec["risks"])
 
-    write_progress(project_dir)
+    write_design_system(project_dir, spec["design_system"])
 
-    write_decisions(project_dir)
+    # --------------------------------------------------
+    # DONE
+    # --------------------------------------------------
 
     print()
     print("Bootstrap generated successfully.")
