@@ -1,43 +1,16 @@
 from pathlib import Path
+import json
 
-from initializer.playbooks.playbook_loader import load_playbook
-from initializer.flow.archetype_detection import detect_archetype
-
-from initializer.runtime.spec_builder import build_semantic_spec
-from initializer.runtime.spec_writer import write_spec
-
-from initializer.synthesis.architecture import synthesize_architecture
-from initializer.synthesis.stories import generate_stories
-
+from initializer.engine.archetype_engine import detect_archetype
 from initializer.engine.capability_engine import apply_capabilities
-from initializer.engine.risk_engine import analyze_risks
-from initializer.engine.design_system_engine import generate_design_system
-from initializer.engine.constraint_engine import generate_constraints
-from initializer.engine.knowledge_engine import generate_knowledge
-from initializer.engine.prd_intelligence_engine import generate_prd_intelligence
+from initializer.engine.knowledge_engine import apply_knowledge
+from initializer.engine.architecture_engine import generate_architecture
+from initializer.engine.story_engine import generate_stories
 
-from initializer.renderers.prd_renderer import render_prd
-from initializer.renderers.stories_renderer import write_stories
-from initializer.renderers.architecture_renderer import write_architecture
-from initializer.renderers.risks_renderer import write_risks
-from initializer.renderers.design_system_renderer import write_design_system
-from initializer.renderers.constraints_renderer import write_constraints
-from initializer.renderers.knowledge_renderer import write_knowledge
-from initializer.renderers.prd_intelligence_renderer import write_prd_intelligence
+from initializer.ai.refine_engine import refine_spec
 
-from initializer.renderers.project_files import (
-    write_basic_files,
-    write_agents,
-    write_progress,
-    write_decisions,
-)
-
-OUTPUT_DIR = Path("output")
-
-
-# --------------------------------------------------
-# CLI HELPERS
-# --------------------------------------------------
+from initializer.validation.prd_validator import validate_prd
+from initializer.validation.story_coverage import check_story_coverage
 
 
 def prompt_text(label, default=None):
@@ -46,248 +19,214 @@ def prompt_text(label, default=None):
 
     value = input(f"{label}{suffix}: ").strip()
 
-    if value == "" and default is not None:
+    if not value and default:
         return default
 
     return value
 
 
-def prompt_choice(label, options, default_index=0):
+def prompt_choice(label, options, default=None):
 
     print(label)
 
-    for i, opt in enumerate(options, 1):
+    for i, o in enumerate(options, start=1):
 
-        marker = " (default)" if i - 1 == default_index else ""
-
-        print(f"  {i}. {opt}{marker}")
+        if o == default:
+            print(f" {i}. {o} (default)")
+        else:
+            print(f" {i}. {o}")
 
     value = input("> ").strip()
 
-    if value == "":
-        return options[default_index]
-
-    return options[int(value) - 1]
-
-
-def prompt_boolean(label, default):
-
-    default_label = "y" if default else "n"
-
-    value = input(f"{label} (y/n) [default={default_label}]: ").strip().lower()
-
-    if value == "":
+    if not value and default:
         return default
 
-    return value in ["y", "yes", "true"]
+    idx = int(value) - 1
+
+    return options[idx]
 
 
-# --------------------------------------------------
-# FILESYSTEM
-# --------------------------------------------------
+def create_output_dir(slug):
+
+    path = Path("output") / slug
+
+    path.mkdir(parents=True, exist_ok=True)
+
+    return path
 
 
-def ensure_output_dir():
+def write_json(path, data):
 
-    OUTPUT_DIR.mkdir(exist_ok=True)
-
-
-def create_project_dir(slug):
-
-    project_dir = OUTPUT_DIR / slug
-
-    project_dir.mkdir(parents=True, exist_ok=True)
-
-    return project_dir
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2)
 
 
-# --------------------------------------------------
-# DISCOVERY
-# --------------------------------------------------
+def write_prd(path, spec):
+
+    content = f"""
+# {spec['answers']['project_name']}
+
+## Summary
+
+{spec['answers']['summary']}
+
+## Stack
+
+Frontend: {spec['stack']['frontend']}
+Backend: {spec['stack']['backend']}
+Database: {spec['stack']['database']}
+
+## Features
+"""
+
+    for f in spec["features"]:
+        content += f"- {f}\n"
+
+    content += "\n## Architecture Decisions\n"
+
+    for d in spec["architecture"]["decisions"]:
+        content += f"- {d}\n"
+
+    with open(path, "w") as f:
+        f.write(content)
 
 
-def collect_input():
+def write_architecture(path, spec):
 
-    raw_prompt = prompt_text("Describe the project")
+    arch = spec["architecture"]
 
-    archetype = detect_archetype(raw_prompt)
+    content = "# Architecture\n\n"
 
-    playbook = load_playbook(archetype)
+    for c in arch["components"]:
 
-    print()
-    print(f"Detected archetype: {archetype}")
-    print(playbook["description"])
-    print()
+        content += f"### {c['name']}\n"
+        content += f"Technology: {c['technology']}\n"
+        content += f"Role: {c['role']}\n\n"
+
+    with open(path, "w") as f:
+        f.write(content)
+
+
+def write_stories(path, spec):
+
+    stories_dir = path / "stories"
+
+    stories_dir.mkdir(exist_ok=True)
+
+    for s in spec["stories"]:
+
+        file = stories_dir / f"{s['id']}.md"
+
+        content = f"""
+# {s['id']} — {s['title']}
+
+## Description
+
+{s['description']}
+"""
+
+        with open(file, "w") as f:
+            f.write(content)
+
+
+def build_initial_spec(prompt):
+
+    archetype = detect_archetype(prompt)
+
+    spec = {
+        "prompt": prompt,
+        "archetype": archetype,
+        "stack": archetype["stack"],
+        "features": archetype["features"],
+        "capabilities": [],
+        "architecture": {},
+        "stories": [],
+        "answers": {}
+    }
+
+    return spec
+
+
+def collect_answers():
 
     project_name = prompt_text("Project name")
 
-    slug_default = project_name.lower().replace(" ", "-")
-
-    project_slug = prompt_text("Project slug", slug_default)
+    project_slug = prompt_text(
+        "Project slug",
+        project_name.lower().replace(" ", "-")
+    )
 
     summary = prompt_text("One sentence summary")
 
     surface = prompt_choice(
         "Choose product surface",
         ["internal_admin_only", "admin_plus_public_site"],
-        default_index=1,
+        "admin_plus_public_site"
     )
 
     deploy_target = prompt_choice(
         "Choose deploy target",
         ["docker", "docker_and_k8s_later"],
-        default_index=0,
+        "docker"
     )
 
-    answers = {}
-
-    for q in playbook.get("discovery_questions", []):
-
-        value = prompt_boolean(q["question"], q["default"])
-
-        answers[q["id"]] = value
-
-    answers["project_name"] = project_name
-    answers["project_slug"] = project_slug
-    answers["summary"] = summary
-    answers["surface"] = surface
-    answers["deploy_target"] = deploy_target
-
-    return raw_prompt, archetype, playbook, answers
+    return {
+        "project_name": project_name,
+        "project_slug": project_slug,
+        "summary": summary,
+        "surface": surface,
+        "deploy_target": deploy_target
+    }
 
 
-# --------------------------------------------------
-# PIPELINE
-# --------------------------------------------------
+def run_new_project(spec_path=None):
 
+    prompt = prompt_text("Describe the project")
 
-def run_new_project(spec=None):
+    spec = build_initial_spec(prompt)
 
-    ensure_output_dir()
+    answers = collect_answers()
 
-    raw_prompt, archetype, playbook, answers = collect_input()
+    spec["answers"] = answers
 
-    slug = answers["project_slug"]
+    spec = apply_capabilities(spec)
 
-    project_dir = create_project_dir(slug)
+    spec = apply_knowledge(spec)
 
-    # --------------------------------------------------
-    # SEMANTIC SPEC
-    # --------------------------------------------------
+    spec["architecture"] = generate_architecture(spec)
 
-    spec = build_semantic_spec(
-        raw_prompt,
-        archetype,
-        playbook,
-        answers,
-    )
+    spec["stories"] = generate_stories(spec)
 
-    # --------------------------------------------------
-    # ARCHITECTURE SYNTHESIS
-    # --------------------------------------------------
+    spec = refine_spec(spec)
 
-    architecture = synthesize_architecture(spec, playbook)
+    errors = validate_prd(spec)
 
-    spec["architecture"] = architecture
+    if errors:
 
-    # --------------------------------------------------
-    # STORY GENERATION
-    # --------------------------------------------------
+        print("\nPRD validation errors:\n")
 
-    stories = generate_stories(spec, architecture)
+        for e in errors:
+            print("-", e)
 
-    spec["stories"] = stories
+    missing = check_story_coverage(spec)
 
-    # --------------------------------------------------
-    # CAPABILITY ENGINE
-    # --------------------------------------------------
+    if missing:
 
-    architecture, stories, capabilities = apply_capabilities(spec)
+        print("\nMissing story coverage for capabilities:\n")
 
-    spec["architecture"] = architecture
-    spec["stories"] = stories
-    spec["capabilities"] = capabilities
+        for m in missing:
+            print("-", m)
 
-    # --------------------------------------------------
-    # RISK ENGINE
-    # --------------------------------------------------
+    output_dir = create_output_dir(answers["project_slug"])
 
-    risks = analyze_risks(spec)
+    write_json(output_dir / "spec.json", spec)
 
-    spec["risks"] = risks
+    write_prd(output_dir / "PRD.md", spec)
 
-    # --------------------------------------------------
-    # DESIGN SYSTEM ENGINE
-    # --------------------------------------------------
+    write_architecture(output_dir / "architecture.md", spec)
 
-    design_system = generate_design_system(spec)
+    write_stories(output_dir, spec)
 
-    spec["design_system"] = design_system
+    print("\nProject generated successfully.\n")
 
-    # --------------------------------------------------
-    # CONSTRAINT ENGINE
-    # --------------------------------------------------
-
-    constraints = generate_constraints(spec)
-
-    spec["constraints"] = constraints
-
-    # --------------------------------------------------
-    # KNOWLEDGE ENGINE
-    # --------------------------------------------------
-
-    knowledge = generate_knowledge(spec)
-
-    spec["knowledge"] = knowledge
-
-    # --------------------------------------------------
-    # PRD INTELLIGENCE ENGINE
-    # --------------------------------------------------
-
-    prd_intelligence = generate_prd_intelligence(spec)
-
-    spec["prd_intelligence"] = prd_intelligence
-
-    # --------------------------------------------------
-    # WRITE SPEC
-    # --------------------------------------------------
-
-    write_spec(spec, project_dir)
-
-    # --------------------------------------------------
-    # BASE FILES
-    # --------------------------------------------------
-
-    write_basic_files(project_dir)
-
-    write_agents(project_dir)
-
-    write_progress(project_dir)
-
-    write_decisions(project_dir)
-
-    # --------------------------------------------------
-    # DOCUMENTATION
-    # --------------------------------------------------
-
-    prd = render_prd(spec)
-
-    (project_dir / "PRD.md").write_text(prd)
-
-    write_stories(project_dir, spec["stories"])
-
-    write_architecture(project_dir, spec["architecture"])
-
-    write_risks(project_dir, spec["risks"])
-
-    write_design_system(project_dir, spec["design_system"])
-
-    write_constraints(project_dir, spec["constraints"])
-
-    write_knowledge(project_dir, spec["knowledge"])
-
-    write_prd_intelligence(project_dir, spec["prd_intelligence"])
-
-    print()
-    print("Bootstrap generated successfully.")
-    print(project_dir)
+    print(output_dir)

@@ -3,11 +3,16 @@ pyproject.toml
 initializer/__init__.py
 initializer/__main__.py
 initializer/cli.py
+initializer/ai/__init__.py
+initializer/ai/architecture_review.py
+initializer/ai/discovery_agent.py
+initializer/ai/refine_engine.py
 initializer/capabilities/__init__.py
 initializer/capabilities/cms.py
 initializer/capabilities/i18n.py
 initializer/capabilities/public_site.py
 initializer/capabilities/scheduled_jobs.py
+initializer/engine/architeture_diagram_engine.py
 initializer/engine/capability_engine.py
 initializer/engine/capability_registry.py
 initializer/engine/constraint_engine.py
@@ -27,6 +32,7 @@ initializer/graph/story_graph.py
 initializer/models/bootstrap.py
 initializer/playbooks/__init__.py
 initializer/playbooks/playbook_loader.py
+initializer/renderers/architecture_diagram_renderer.py
 initializer/renderers/architecture_renderer.py
 initializer/renderers/constraints_renderer.py
 initializer/renderers/design_system_renderer.py
@@ -49,6 +55,8 @@ initializer/runtime/story_scheduler.py
 initializer/synthesis/__init__.py
 initializer/synthesis/architecture.py
 initializer/synthesis/stories.py
+initializer/validation/prd_validator.py
+initializer/validation/story_coverage.py
 openclaw_project_initializer.egg-info/PKG-INFO
 openclaw_project_initializer.egg-info/SOURCES.txt
 openclaw_project_initializer.egg-info/dependency_links.txt
