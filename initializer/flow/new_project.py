@@ -26,6 +26,9 @@ from initializer.renderers.architecture_diagram_renderer import (
 from initializer.validation.prd_validator import validate_prd
 from initializer.validation.story_coverage import check_story_coverage
 
+from initializer.ai.discovery_engine import run_assisted_discovery
+from initializer.ai.discovery_merge import merge_assisted_discovery
+
 
 def prompt_text(label, default=None):
 
@@ -214,61 +217,62 @@ def collect_answers():
         "deploy_target": deploy_target
     }
 
+def run_optional_assisted_discovery(spec: dict, assist: bool = False) -> dict:
+    """
+    Run the AI-assisted discovery pass only when explicitly enabled.
 
-def run_new_project(spec_path=None):
+    This enriches answers/capabilities/discovery metadata conservatively
+    without replacing the canonical spec.
+    """
+    if not assist:
+        return spec
+
+    result = run_assisted_discovery(spec)
+    merged = merge_assisted_discovery(spec, result)
+    return merged
+
+def run_new_project(spec_path=None, assist: bool = False):
 
     prompt = prompt_text("Describe the project")
 
     spec = build_initial_spec(prompt)
 
     answers = collect_answers()
-
     spec["answers"] = answers
 
+    spec = run_optional_assisted_discovery(spec, assist=assist)
+
     spec = derive_capabilities_from_answers(spec)
-
     spec = apply_capabilities(spec)
-
     spec = apply_knowledge(spec)
 
     spec["architecture"] = generate_architecture(spec)
-
     spec["stories"] = generate_stories(spec)
 
     spec = refine_spec(spec)
-
     spec = derive_downstream_artifacts(spec)
 
     errors = validate_prd(spec)
 
     if errors:
-
         print("\nPRD validation errors:\n")
-
         for e in errors:
             print("-", e)
 
     missing = check_story_coverage(spec)
 
     if missing:
-
         print("\nMissing story coverage for capabilities:\n")
-
         for m in missing:
             print("-", m)
 
-    output_dir = create_output_dir(answers["project_slug"])
+    output_dir = create_output_dir(spec["answers"]["project_slug"])
 
     write_json(output_dir / "spec.json", spec)
-
     write_prd(output_dir / "PRD.md", spec)
-
     write_architecture(output_dir / "architecture.md", spec)
-
     write_stories(output_dir, spec)
-
     write_downstream_artifacts(output_dir, spec)
 
     print("\nProject generated successfully.\n")
-
     print(output_dir)
