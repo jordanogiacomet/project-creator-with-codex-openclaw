@@ -2,394 +2,304 @@
 
 You are an execution agent working inside this repository.
 
-This repository is for the **OpenClaw Project Initializer**, a PRD-driven project bootstrap tool.
+Your current mission is to operate in a diagnosis-first iteration.
 
-Your job is to implement the product incrementally, story by story, with strict adherence to the project documents and approval gates.
+The first responsibility is not to refactor immediately.
+
+The first responsibility is to learn what the project currently does, how it is structured, what its intended purpose is, and where its implementation contracts are broken.
+
+Do not redesign the product.
+Do not replace the architecture with a different philosophy.
+Do not silently simplify domain concepts because implementation becomes easier.
 
 ---
 
-## 1. Core operating principle
+## Current iteration mode
 
-This repository follows **PRD-driven development**.
+This repository is in **understand-and-diagnose mode**.
 
-That means implementation must follow this order of authority:
+That means your order of operations is:
 
-1. `PRD.md`
+1. understand what the project does today
+2. infer how the system is intended to work
+3. compare intended behavior vs implemented behavior
+4. record inconsistencies and structural problems
+5. prepare safe implementation guidance for the next iteration
+
+Do not jump directly into broad implementation changes.
+
+---
+
+## Project identity to preserve
+
+This repository represents a **PRD-driven project initializer**.
+
+Its main idea must remain unchanged:
+
+- accept a project description through CLI
+- detect a project archetype
+- derive stack, features, and capabilities
+- synthesize architecture and implementation stories
+- enrich the generated project definition with knowledge, constraints, and other engines
+- validate and refine generated artifacts
+
+The goal of this iteration is to make this idea internally consistent.
+
+The goal is not to turn this repository into a production app or a different kind of generator.
+
+---
+
+## Read order
+
+Before making any meaningful change, read these files in order:
+
+1. `progress.txt`
 2. `decisions.md`
-3. `progress.txt`
-4. `README.md`
-5. `docs/V0.md`
-6. story-specific files under `docs/stories/` when they exist
+3. `diagnosis.md`
+4. `architecture.md`
+5. `prd.json`
 
-If there is any conflict, follow the highest-priority document unless a newer explicit decision supersedes it.
+Then inspect the implementation files that define actual behavior, especially:
 
-Do not invent product behavior that is not grounded in the project documents.
+- CLI entrypoints
+- archetype detection
+- capability application
+- architecture generation
+- story generation
+- validation
+- any downstream synthesis engines
 
----
-
-## 2. Product scope reminder
-
-This product is a **local-first CLI initializer**.
-
-Its responsibility in V0 is to:
-
-- accept a project idea in natural language;
-- detect a supported archetype;
-- ask guided follow-up questions;
-- consolidate missing architectural decisions;
-- generate the initial project bootstrap;
-- stop for human review.
-
-It must **not** in V0:
-
-- implement the generated project's business features;
-- deploy anything;
-- touch production;
-- skip critical architecture confirmation;
-- run multiple stories in parallel;
-- act without review gates.
+If one of the expected repository documents is missing, record that in `progress.txt`.
 
 ---
 
-## 3. Read order before any change
+## Primary working rule
 
-Before making any code or document change, read these files in this exact order:
+You must learn both:
 
-1. `PRD.md`
-2. `decisions.md`
-3. `progress.txt`
-4. `README.md`
-5. `docs/V0.md` if it exists
-6. the selected story file under `docs/stories/` if it exists
+- what the project is supposed to do
+- what the current code actually does
 
-If a required file is missing, treat it as a blocker and record it in `progress.txt`.
+Diagnosis must be based on the gap between those two things.
 
----
-
-## 4. Sources of truth by purpose
-
-Use each file for its intended purpose:
-
-### `PRD.md`
-Use for:
-- product goals
-- scope
-- non-goals
-- functional requirements
-- acceptance criteria
-- supported archetype
-- success criteria
-
-### `decisions.md`
-Use for:
-- stable implementation decisions
-- explicit constraints
-- approved technical directions
-- superseded decisions history
-
-### `progress.txt`
-Use for:
-- current execution state
-- active story
-- blockers
-- validation results
-- what was changed
-- what remains pending
-
-### `README.md`
-Use for:
-- repository overview
-- developer setup
-- command references
-- execution notes
-
-### `docs/V0.md`
-Use for:
-- V0 interpretation details
-- operational boundaries
-- CLI flow clarification
-
-### `docs/stories/*`
-Use for:
-- story-level requirements
-- scope of the current implementation step
-- local acceptance criteria
-- specific constraints for the selected work item
+Do not diagnose based only on documentation.
+Do not diagnose based only on code fragments.
+Use both.
 
 ---
 
-## 5. Default execution model
+## Source-of-truth policy
 
-Work in **small, reviewable increments**.
+Use files by role:
 
-Every cycle should look like this:
+- `prd.json`
+  - intended product definition
+  - domain model
+  - diagnosis scope
+  - invariants
+  - current iteration goal
 
-1. read context
-2. identify the selected story
-3. restate the goal internally
-4. make the smallest coherent change
-5. validate
-6. record progress
-7. stop for review if needed
+- `architecture.md`
+  - conceptual system model
+  - relationship between archetype, capabilities, features, answers, and outputs
 
-Do not perform broad refactors unless the story explicitly requires them.
+- `diagnosis.md`
+  - confirmed and suspected problems
+  - evidence-based structural findings
 
-Do not mix unrelated work into the same cycle.
+- `decisions.md`
+  - stable decisions already made
+  - do not contradict them unless explicitly superseded
 
----
+- `progress.txt`
+  - append-only execution log
+  - what was inspected, what was learned, what was validated, what remains open
 
-## 6. Story discipline
+Implementation files are the source of truth for current actual behavior.
 
-Work on **one story at a time**.
-
-Rules:
-
-- do not implement multiple stories in parallel;
-- do not pull future work into the current story;
-- do not mark a story done unless its acceptance criteria are satisfied;
-- if a story depends on missing prerequisites, stop and record a blocker.
-
-If the current story is unclear, prefer adding a blocker or an open question to `progress.txt` instead of making large assumptions.
+Diagnosis must reconcile documentation with implementation reality.
 
 ---
 
-## 7. Architecture decision rules
+## Core invariants
 
-Critical architecture decisions must never be silently assumed.
+These must be preserved unless explicitly superseded:
 
-Examples include:
-
-- project structure beyond the documented default
-- playbook format changes
-- schema strategy
-- renderer strategy
-- session persistence model
-- OpenClaw integration shape
-- Codex/Ralph coupling strategy
-- template engine choice
-- CLI UX changes with product impact
-
-When such a decision is required:
-
-1. implement only what is already clearly justified by the repository context;
-2. record the unresolved point in `progress.txt`;
-3. append or update `decisions.md` only if the decision is already approved in context.
-
-Do not create fake certainty.
+1. The repository remains a project initializer.
+2. The repository remains PRD-driven.
+3. The repository remains organized around specialized engines.
+4. `archetype`, `capabilities`, and `features` are separate domain concepts.
+5. CLI answers are user selections, not equivalent to archetypes or capabilities unless explicitly derived.
+6. Diagnosis must preserve the main product idea rather than replace it.
 
 ---
 
-## 8. Allowed change types in this repository
+## Understanding-first rules
 
-Allowed work includes:
+Before proposing architectural corrections, determine:
 
-- documentation
-- schemas
-- example files
-- playbooks
-- Python CLI code
-- validators
-- loaders
-- renderers
-- tests
-- local developer tooling
-- container setup for safe local execution
+- what inputs the initializer accepts
+- what outputs it generates
+- what the current generation pipeline actually is
+- which fields are canonical vs accidental
+- which modules are producers and which are consumers
+- where semantic drift occurs between code and intent
 
-Disallowed work includes:
+You should explicitly record findings such as:
 
-- production deployment setup that performs live actions
-- secret injection
-- infrastructure changes outside repo scope
-- destructive environment operations
+- field naming mismatches
+- overwritten intermediate state
+- capability logic not being invoked
+- expected outputs not being populated
+- downstream engines relying on absent or inconsistent names
 
 ---
 
-## 9. Validation policy
+## Domain rules
 
-Before considering a change complete, run the relevant validations for the change.
+Treat these concepts as distinct:
 
-Use the most relevant subset first, then broader checks when appropriate.
+### archetype
+A product type classification.
 
-Typical validation order:
+Examples:
+- `editorial-cms`
+- `marketplace`
+- `saas-app`
 
-1. targeted file or module validation
-2. tests for changed logic
-3. broader repository validation
+### capability
+An architectural or platform-level enrichment.
 
-Expected command categories include:
+Examples:
+- `cms`
+- `public-site`
+- `scheduled-jobs`
+- `i18n`
 
-- formatting
-- linting
-- type checking
-- test execution
+### feature
+A product functionality expected in generated output.
 
-If a command is unavailable, record that explicitly in `progress.txt`.
+Examples:
+- `authentication`
+- `roles`
+- `media-library`
+- `preview`
+- `scheduled-publishing`
 
-Do not falsely claim validation passed.
+### answers
+Structured CLI selections.
 
----
+Examples:
+- `project_name`
+- `project_slug`
+- `summary`
+- `surface`
+- `deploy_target`
 
-## 10. Progress logging rules
-
-`progress.txt` is mandatory operational memory.
-
-After meaningful work, append a concise entry including:
-
-- what was attempted
-- what changed
-- validation performed
-- result
-- blockers or follow-ups
-
-Use append-only logging unless the repository later defines a stricter format.
-
-Do not rewrite history casually.
-
-If a cycle is blocked, say so clearly.
-
----
-
-## 11. Decision logging rules
-
-Use `decisions.md` only for decisions that are stable enough to matter across future work.
-
-A decision entry should include:
-
-- ID
-- date
-- status
-- decision
-- reason
-- consequences
-
-Do not write speculative decisions as accepted decisions.
-
-Use a provisional status where appropriate if the repository format supports it.
+Do not collapse these layers into one generic concept.
 
 ---
 
-## 12. Commit and review behavior
+## Diagnosis expectations
 
-Do not assume commit permission means commit approval.
+Your diagnosis must answer both questions:
 
-Default behavior:
+### A. What does the project currently do?
+Examples:
+- what structure does the initializer build
+- which engines are actually called
+- what output files are written
+- which fields are generated
+- what the current CLI flow is
 
-- make the change
-- validate it
-- summarize what changed
-- summarize validation status
-- stop for review before commit unless explicitly instructed otherwise
-
-Do not bundle unrelated changes into one commit.
-
-Do not create commits that hide uncertainty.
-
----
-
-## 13. Error handling behavior
-
-When blocked:
-
-- stop the current path;
-- document the blocker in `progress.txt`;
-- preserve repository consistency;
-- avoid speculative workarounds unless clearly safe and local.
-
-When something is missing:
-
-- do not fabricate it;
-- do not invent nonexistent files, commands, or prior decisions;
-- note the missing dependency clearly.
+### B. What is broken or inconsistent?
+Examples:
+- naming mismatches
+- missing canonical fields
+- contract misalignment
+- invalid registry lookups
+- state overwrite problems
+- downstream engines consuming incompatible names
 
 ---
 
-## 14. Coding expectations
+## When modifying implementation
 
-When writing code for this repository:
+Only make implementation changes when they are clearly aligned to diagnosis goals.
 
-- prefer clarity over cleverness;
-- keep functions focused;
-- make control flow explicit;
-- avoid premature abstraction;
-- keep V0 implementation simple;
-- design for one archetype first, extensibility second.
+If you change implementation, verify:
 
-When writing Python:
+1. the initializer still runs
+2. editorial prompt flow still produces output
+3. archetype contract is stable
+4. capabilities are explicit and actually consumed
+5. architecture generation does not discard enriched state unless intentionally merged
+6. story generation has stable identity semantics
+7. downstream engines align with canonical naming
 
-- keep modules small and readable;
-- separate loading, validation, flow orchestration, and rendering concerns;
-- prefer explicit data handling over magic;
-- add types where helpful;
-- keep side effects easy to trace.
+Do not claim a validation you did not perform.
 
 ---
 
-## 15. Documentation expectations
+## Progress logging requirements
 
-When writing documentation:
+Append only.
 
-- write for future execution agents and the repository owner;
-- prefer precise operational wording;
-- keep docs aligned with the actual implemented behavior;
-- update docs when behavior changes materially.
+Format:
 
-Do not let docs drift away from the code.
+[ISO-8601 timestamp] TYPE — Message
 
----
+Suggested types:
 
-## 16. V0 implementation priorities
+- INFO
+- LEARNED
+- FINDING
+- DECISION
+- CHANGE
+- BLOCKED
+- VALIDATION
 
-When in doubt, prioritize work in this direction:
-
-1. repository source-of-truth docs
-2. story structure and operating files
-3. playbook contract
-4. bootstrap input contract
-5. template/rendering pipeline
-6. CLI orchestration
-7. safer containerized execution
-8. future OpenClaw/Codex handoff refinements
-
-Do not optimize future phases before V0 is coherent.
+Use `LEARNED` when you discovered how the project actually behaves.
+Use `FINDING` when you identified a problem or inconsistency.
 
 ---
 
-## 17. Definition of done for a story
+## Decision handling
 
-A story is done only when:
+Stable decisions must be appended to `decisions.md`.
 
-- its scoped requirements are satisfied;
-- the implementation matches `PRD.md`;
-- relevant docs were updated;
-- validations were run or explicitly reported as unavailable;
-- `progress.txt` reflects the outcome;
-- no hidden critical assumption remains unresolved.
+Do not rewrite old decisions.
+If a decision is replaced, explicitly mark the old one as superseded.
 
 ---
 
-## 18. Safety and execution limits
+## Prohibited behavior
 
-Never:
+Do not:
 
-- touch production systems;
-- deploy automatically;
-- execute destructive commands without explicit instruction;
-- expose secrets;
-- pretend a decision was made when it was not;
-- continue broad implementation after a critical ambiguity appears.
+- redesign the product into something else
+- simplify by erasing domain distinctions
+- overwrite diagnosis artifacts with speculation
+- make wide refactors before understanding the current system
+- claim a module works if it was not checked
+- silently rename concepts across layers without recording the change
 
 ---
 
-## 19. Practical rule for this repository
+## Preferred mindset
 
-This repository exists to reduce ambiguity at project start.
+This iteration is about understanding the current initializer deeply enough to diagnose it correctly.
 
-Your own behavior inside this repository must reflect that goal.
+The correct sequence is:
 
-That means:
+- learn
+- compare
+- diagnose
+- constrain
+- prepare
 
-- explicit over implicit
-- logged over assumed
-- reviewed over rushed
-- one story at a time
-- stop before overreach
+Not:
+
+- guess
+- refactor
+- rationalize later

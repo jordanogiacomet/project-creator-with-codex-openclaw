@@ -1,170 +1,167 @@
-# progress.txt — OpenClaw Project Initializer
-# Append-only operational log and execution memory
-# Format:
-# [ISO-8601 timestamp] STORY-ID — STATUS — Description
-#
-# Statuses:
-# START | DONE | BLOCKED | INFO | DECISION | VALIDATION | CYCLE COMPLETE
-# ----------------------------------------------------------------------
+# progress.txt
+# Append-only execution log
+# Format: [ISO-8601 timestamp] TYPE — Message
+# Types: INFO | LEARNED | FINDING | DECISION | CHANGE | BLOCKED | VALIDATION
+# -------------------------------------------------------------------------
 
-[2026-03-13T00:00:00Z] INFO — progress.txt initialized for repository bootstrap
-[2026-03-13T00:00:01Z] INFO — Repository product: OpenClaw Project Initializer
-[2026-03-13T00:00:02Z] INFO — Development model: PRD-driven development with future Codex + Ralph loop execution
-[2026-03-13T00:00:03Z] INFO — Current phase: discovery-and-v0-definition
-[2026-03-13T00:00:04Z] INFO — Supported V0 archetype: Next.js + Payload + PostgreSQL
-[2026-03-13T00:00:05Z] INFO — Initial command target: initializer new
-[2026-03-13T00:00:06Z] INFO — Output strategy: generate bootstrap into a new directory
-[2026-03-13T00:00:07Z] INFO — Runtime direction: Python CLI executed in container
-[2026-03-13T00:00:08Z] INFO — Human review gate is mandatory before any handoff to Codex + Ralph loop
-[2026-03-13T00:00:09Z] INFO — V0 generates documentation, structure, and initial stories only
-[2026-03-13T00:00:10Z] INFO — V0 must not implement project business features, deploy, or touch production
-
-## Codebase Patterns
-
-- `PRD.md` is the primary product-definition document
-- `decisions.md` records stable repository-wide decisions
-- `progress.txt` is append-only operational memory
-- `AGENTS.md` defines repository execution behavior for agents
-- V0 work must proceed one story at a time
-- Critical architecture decisions must never be silently assumed
-- Internal contracts such as schemas and playbooks are implementation deliverables, not prerequisites for repository creation
-- Initial implementation should optimize for one strong archetype rather than many weak ones
-- Generated output belongs in a new target directory, not the working repository root of the initializer itself
-- The initializer must stop after bootstrap generation and before feature implementation
-- Story execution only begins after source-of-truth docs and initial backlog exist
-
-## Project Snapshot
-
-- Product: OpenClaw Project Initializer
-- Type: local-first CLI bootstrap tool
-- Version target: 0.1
-- Status: repository-bootstrap-complete / ready-for-story-execution
-- Primary user: repository author, for personal reuse
-- Primary outcome: transform a natural-language project idea into a reviewable PRD-driven bootstrap package
-- First archetype: Next.js + Payload + PostgreSQL
-- Future executor: Codex + Ralph loop
-- Current repository state: source-of-truth documents and initial story backlog created; repository is ready to start implementation story execution
-
-## PRD Sync Notes
-
-- `PRD.md` has been created as the main source of product truth
-- `AGENTS.md` has been created to constrain future repository execution
-- `decisions.md` has been created with initial accepted decisions for V0
-- `progress.txt` has been initialized as append-only operational memory
-- Initial story backlog under `docs/stories/` has been defined
-- The repository is now ready to begin bounded implementation through stories
-- Future technical artifacts such as `README.md`, `docs/V0.md`, playbooks, schemas, examples, loaders, validators, renderers, and CLI modules should be introduced through bounded stories only
-
-## Current Delivery Status
-
-- Completed:
-  - `PRD.md`
-  - `AGENTS.md`
-  - `decisions.md`
-  - initial `progress.txt` bootstrap
-  - initial story backlog under `docs/stories/`
-
-- Not started:
-  - `README.md`
-  - `docs/V0.md`
-  - playbook definition
-  - schema files
-  - example input files
-  - Python CLI structure
-  - container runtime files
-  - template rendering pipeline
-
-- Current recommended next milestone:
-  - start `ST-001` and create the repository `README.md`
-
-## Validation Rules
-
-Required validation discipline for this repository:
-
-1. Validate against `PRD.md` first
-2. Validate against `decisions.md` second
-3. Validate story scope before making changes
-4. Run the smallest relevant validation commands for each change
-5. Never claim validation passed if it was not executed
-6. Record validation outcomes in this file
-
-Initial command categories expected later in implementation:
-
-- formatting
-- linting
-- type checking
-- tests
-- targeted module execution
-
-Current validation status:
-
-[2026-03-13T00:00:11Z] VALIDATION — Repository bootstrap docs created; no code validation applicable yet
-[2026-03-13T00:00:16Z] VALIDATION — Initial story backlog defined; documentation-only change, no code validation applicable
-
-## Active Risks / Known Issues
-
-- `README.md` does not exist yet
-- `docs/V0.md` does not exist yet
-- No playbook contract has been committed yet
-- No schema validation pipeline exists yet
-- No CLI implementation exists yet
-- No container runtime files exist yet
-- Risk of over-design remains high if implementation begins outside explicit story scope
-- Risk of schema-first drift remains high if internal contracts are implemented without reference to story scope
-
-## Next Recommended Stories
-
-- ST-001 — Create repository README and initial developer-facing overview
-- ST-002 — Create `docs/V0.md` to freeze the V0 operating boundary
-- ST-003 — Create first playbook for `next-payload-postgres`
-- ST-004 — Introduce playbook schema validation
-- ST-005 — Introduce bootstrap input schema validation and example input
-- ST-006 — Scaffold the minimal Python CLI entrypoint for `initializer new`
-- ST-007 — Add container runtime and execution docs
-
-## Execution Log
-
-[2026-03-13T00:00:12Z] INFO — Source-of-truth repository files initialized before implementation begins
-[2026-03-13T00:00:13Z] INFO — Repository is ready to transition from product definition into story-based execution
-[2026-03-13T00:00:14Z] BLOCKED — No explicit story files exist yet; implementation should not begin until first story is defined
-[2026-03-13T00:00:15Z] CYCLE COMPLETE — Repository bootstrap documentation phase completed
-[2026-03-13T00:00:16Z] INFO — Initial story backlog created under `docs/stories/`
-[2026-03-13T00:00:17Z] INFO — Repository now contains the minimum source-of-truth package required to begin story-based implementation
-[2026-03-13T00:00:18Z] INFO — Initial bootstrap phase is complete enough to start the project safely
-[2026-03-13T00:00:19Z] DONE — Initial repository setup completed for project start
-[2026-03-13T00:00:20Z] CYCLE COMPLETE — Repository is ready for ST-001 execution
-[2026-03-13T00:00:21Z] ST-001 — START — Reviewed `PRD.md`, `decisions.md`, `progress.txt`, and `docs/stories/ST-001-readme-and-repo-overview.md` to scope the first repository README
-[2026-03-13T00:00:22Z] ST-001 — INFO — Created root `README.md` with repository purpose, V0 scope, supported archetype, source-of-truth files, repository structure, execution model, and next recommended steps
-[2026-03-13T00:00:23Z] ST-001 — VALIDATION — Ran `sed -n '1,240p' README.md` and `rg -n "local-first CLI|Next\\.js \\+ Payload \\+ PostgreSQL|story-driven|PRD\\.md|decisions\\.md|progress\\.txt|AGENTS\\.md" README.md`; README content matches story acceptance criteria and remains consistent with `PRD.md` and `decisions.md`
-[2026-03-13T00:00:24Z] ST-001 — DONE — README story completed and story status updated to `done`
-[2026-03-13T00:00:25Z] ST-001 — CYCLE COMPLETE — No blocker encountered; next recommended story remains `ST-002`
-[2026-03-13T19:12:45Z] ST-002 — START — Reviewed `PRD.md`, `decisions.md`, `progress.txt`, `README.md`, and `docs/stories/ST-002-v0-boundary-document.md` to scope the V0 boundary document
-[2026-03-13T19:12:45Z] ST-002 — INFO — Created `docs/V0.md` with the V0 purpose, supported archetype, expected input and output models, limits, handoff boundary, explicit non-goals, and minimal execution flow
-[2026-03-13T19:12:45Z] ST-002 — VALIDATION — Ran `sed -n '1,260p' /workspace/docs/V0.md`, `rg -n "docs, structure, and initial stories only|stop after generation and before implementation|deploy automation|production access|automatic feature implementation|Next\\.js \\+ Payload \\+ PostgreSQL|initializer new" /workspace/docs/V0.md`, and `rg -n "Next\\.js \\+ Payload \\+ PostgreSQL|implement the generated project's business features|touch production environments|initializer new" /workspace/PRD.md /workspace/decisions.md`; the new boundary document matches story requirements and does not contradict the source-of-truth docs
-[2026-03-13T19:12:45Z] ST-002 — DONE — V0 boundary document story completed and story status updated to `done`
-[2026-03-13T19:12:45Z] ST-002 — CYCLE COMPLETE — No blocker encountered; next recommended story remains `ST-003`
-[2026-03-13T19:17:13Z] ST-003 — START — Reviewed `PRD.md`, `decisions.md`, `progress.txt`, `README.md`, `docs/V0.md`, and `docs/stories/ST-003-next-payload-postgres-playbook.md` to scope the first archetype playbook
-[2026-03-13T19:17:13Z] ST-003 — INFO — Created `playbooks/next-payload-postgres.yaml` as the first human-readable YAML playbook for the `Next.js + Payload + PostgreSQL` archetype, including detection hints, defaults, guided questions, critical confirmations, required artifacts, default directory structure, initial story seed, stop condition, and handoff context
-[2026-03-13T19:17:13Z] ST-003 — VALIDATION — Ran `sed -n '1,260p' /workspace/playbooks/next-payload-postgres.yaml`, `rg -n "Next\\.js \\+ Payload \\+ PostgreSQL|database: postgresql|deploy_target: docker|must_not_be_silently_assumed: true|PRD\\.md|stop_before_implementation: true|automatic handoff without human review" /workspace/playbooks/next-payload-postgres.yaml`, and `rg -n "Next\\.js \\+ Payload \\+ PostgreSQL|database: PostgreSQL|deploy target: Docker|must never silently assume|stop after generation and before implementation|initial stories" /workspace/PRD.md /workspace/decisions.md /workspace/docs/V0.md`; the playbook matches the story acceptance criteria and remains consistent with the source-of-truth documents
-[2026-03-13T19:17:13Z] ST-003 — DONE — First archetype playbook story completed and story status updated to `done`
-[2026-03-13T19:17:13Z] ST-003 — CYCLE COMPLETE — No blocker encountered; next recommended story becomes `ST-004`
-[2026-03-13T19:24:11Z] ST-004 — START — Reviewed `PRD.md`, `decisions.md`, `progress.txt`, `README.md`, `docs/V0.md`, `docs/stories/ST-004-playbook-schema-validation.md`, and the existing `playbooks/next-payload-postgres.yaml` contract to scope the playbook schema
-[2026-03-13T19:24:11Z] ST-004 — INFO — Created `schemas/playbook.schema.json` with a structural contract for playbook identity, detection hints, defaults including validation commands, guided questions, critical confirmations, required artifacts, initial directory structure, initial story seed, stop condition, and handoff context
-[2026-03-13T19:24:11Z] ST-004 — VALIDATION — Ran `node -e "JSON.parse(require('fs').readFileSync('schemas/playbook.schema.json', 'utf8')); console.log('schema-json:ok')"` and `npx -y js-yaml playbooks/next-payload-postgres.yaml >/tmp/next-payload-postgres.playbook.json && npx -y ajv-cli validate --spec=draft2020 -s schemas/playbook.schema.json -d /tmp/next-payload-postgres.playbook.json`; the schema parsed cleanly and the existing playbook validated successfully against it
-[2026-03-13T19:24:11Z] ST-004 — DONE — Playbook schema validation story completed and story status updated to `done`
-[2026-03-13T19:24:11Z] ST-004 — CYCLE COMPLETE — No blocker encountered; next recommended story becomes `ST-005`
-[2026-03-13T19:31:25Z] ST-005 — START — Reviewed `PRD.md`, `decisions.md`, `progress.txt`, `README.md`, `docs/V0.md`, `docs/stories/ST-005-bootstrap-input-schema-and-example.md`, `playbooks/next-payload-postgres.yaml`, and `schemas/playbook.schema.json` to scope the resolved bootstrap-input contract
-[2026-03-13T19:31:25Z] ST-005 — INFO — Created `schemas/bootstrap-input.schema.json` for resolved project-specific answers and critical confirmations, plus `examples/next-payload-postgres.input.yaml` as a concrete resolved discovery session for the first supported archetype
-[2026-03-13T19:31:25Z] ST-005 — VALIDATION — Ran `node -e "JSON.parse(require('fs').readFileSync('/workspace/schemas/bootstrap-input.schema.json', 'utf8')); console.log('schema-json:ok')"`; `npx -y js-yaml /workspace/examples/next-payload-postgres.input.yaml >/tmp/next-payload-postgres.input.json && npx -y ajv-cli validate --spec=draft2020 -s /workspace/schemas/bootstrap-input.schema.json -d /tmp/next-payload-postgres.input.json`; and `npx -y js-yaml /workspace/playbooks/next-payload-postgres.yaml >/tmp/next-payload-postgres.playbook.json` plus an inline Node coherence check for `playbook_id`, guided answer IDs, critical confirmation IDs, and the resolved deploy target; schema JSON parsed cleanly, the example validated against the schema, and playbook/example key coherence passed
-[2026-03-13T19:31:25Z] ST-005 — DONE — Bootstrap input schema and example story completed and story status updated to `done`
-[2026-03-13T19:31:25Z] ST-005 — CYCLE COMPLETE — No blocker encountered; next recommended story remains `ST-006`
-[2026-03-13T19:35:37Z] ST-006 — START — Reviewed `PRD.md`, `decisions.md`, `progress.txt`, `README.md`, `docs/V0.md`, and `docs/stories/ST-006-cli-entrypoint-initializer-new.md` to scope the minimal executable CLI surface for `initializer new`
-[2026-03-13T19:35:37Z] ST-006 — INFO — Added `pyproject.toml` plus a small `initializer` Python package with `initializer.cli`, `initializer.__main__`, and `initializer.flow.new_project` so the repository now contains a minimal CLI entrypoint and delegated `new` command flow without implementing discovery or generation
-[2026-03-13T19:35:37Z] ST-006 — VALIDATION — Ran `python3 -m compileall initializer` and `python3 -m initializer new`; bytecode compilation succeeded and the `new` command executed the placeholder flow. Ran `python3 -m initializer` to inspect the command surface; help rendered with the `new` subcommand and exited non-zero because no command was provided. Attempted installed-console-script validation with `python3 -m venv /tmp/st006-venv` and `python3 -m pip install --no-build-isolation --prefix /tmp/st006-prefix.c2EKjP -e /workspace`, but this environment lacks `ensurepip`/`python3-venv` and `pip`, so direct installed-script validation was unavailable
-[2026-03-13T19:35:37Z] ST-006 — DONE — Minimal CLI entrypoint story completed and story status updated to `done`
-[2026-03-13T19:35:37Z] ST-006 — CYCLE COMPLETE — No blocker encountered; next recommended story remains `ST-007`
-[2026-03-13T19:47:30Z] ST-007 — START — Reviewed `PRD.md`, `decisions.md`, `progress.txt`, `README.md`, `docs/V0.md`, and `docs/stories/ST-007-container-runtime-and-execution-docs.md` to scope the minimal local container runtime path
-[2026-03-13T19:47:30Z] ST-007 — INFO — Added `docker/Dockerfile` as a minimal Python 3.11 runtime that installs the local package and exposes `initializer` as the entrypoint; updated `README.md` with local container build/run commands and explicit local-only execution notes
-[2026-03-13T19:47:30Z] ST-007 — VALIDATION — Ran `sed -n '1,220p' docker/Dockerfile`, `sed -n '1,260p' README.md`, and `rg -n "container runtime|docker/Dockerfile|docker build -f docker/Dockerfile|docker run --rm openclaw-initializer:local new|local execution only" README.md` to verify the runtime definition and execution docs. Attempted `docker build -f docker/Dockerfile -t openclaw-initializer:st007 .`, but the environment does not have the `docker` command installed. Ran fallback CLI validation with `python3 -m compileall initializer` and `python3 -m initializer new`; both succeeded
-[2026-03-13T19:47:30Z] ST-007 — DONE — Container runtime and execution docs story completed and story status updated to `done`
-[2026-03-13T19:47:30Z] ST-007 — CYCLE COMPLETE — Scoped deliverables are complete; direct container build/run remains unverified only because Docker is unavailable in this environment
+[2026-03-13T00:00:00Z] INFO — Diagnosis iteration initialized for the initializer repository.
+[2026-03-13T00:00:01Z] INFO — Current mode is understand-first and diagnose-second.
+[2026-03-13T00:00:02Z] INFO — Core product identity preserved: PRD-driven initializer with specialized engines.
+[2026-03-13T00:00:03Z] INFO — Repository documents are being established to support comparison between intended behavior and implemented behavior.
+[2026-03-13T00:00:04Z] LEARNED — The repository is intended to accept a project prompt, derive a project model, and generate structured artifacts such as PRD, architecture documentation, and stories.
+[2026-03-13T00:00:05Z] LEARNED — The repository concept depends on distinct domain layers including archetype, capabilities, features, and CLI answers.
+[2026-03-13T00:00:06Z] FINDING — Safe refactoring requires first confirming how current implementation actually produces and consumes these layers.
+[2026-03-13T00:00:07Z] FINDING — Current known risk areas include archetype identity, capability production/consumption, overwritten enriched state, and downstream naming mismatches.
+[2026-03-13T00:00:08Z] DECISION — Diagnosis will compare intended behavior from repo documents with actual behavior learned from code inspection.
+[2026-03-13T00:00:09Z] DECISION — The diagnosis phase will not redesign the product or remove its engine-based structure.
+[2026-03-13T00:00:10Z] CHANGE — Added AGENTS.md to enforce understand-first diagnosis workflow.
+[2026-03-13T00:00:11Z] CHANGE — Added prd.json to define intended product behavior, domain model, and diagnosis scope.
+[2026-03-13T00:00:12Z] CHANGE — Added architecture.md to document the initializer’s conceptual system model.
+[2026-03-13T00:00:13Z] CHANGE — Added diagnosis.md to record known and suspected structural problems.
+[2026-03-13T00:00:14Z] CHANGE — Added decisions.md to preserve stable reasoning and iteration guardrails.
+[2026-03-13T00:00:15Z] VALIDATION — Diagnosis artifact set is aligned around learning current repository behavior before broad implementation work.
+[2026-03-13T00:00:16Z] INFO — Next execution work should inspect implementation modules and append LEARNED/FINDING entries based on actual code behavior.[2026-03-14T02:11:56Z] INFO — Ralph loop started. Max iterations: 8.
+[2026-03-14T02:11:56Z] INFO — Starting iteration 1.
+[2026-03-14T02:18:05Z] INFO — Ralph loop started. Max iterations: 8.
+[2026-03-14T02:18:05Z] INFO — Starting iteration 1.
+[2026-03-14T02:20:46Z] LEARNED — The active CLI entrypoint dispatches `new`, `plan`, `refine`, `doctor`, and `validate`; the live generation path for initialization is `initializer.flow.new_project.run_new_project`.
+[2026-03-14T02:20:46Z] LEARNED — The active `new` flow prompts for project description, project name, slug, summary, surface, and deploy target; it then builds a spec, applies capabilities and knowledge, generates architecture and stories, refines the spec, validates it, and writes `output/<slug>/spec.json`, `PRD.md`, `architecture.md`, and `stories/*.md`.
+[2026-03-14T02:20:46Z] FINDING — `initializer.flow.new_project.build_initial_spec()` required `archetype_data["id"]`, but `initializer.engine.archetype_engine.detect_archetype()` emitted `name` only, causing `KeyError('id')` before the active initializer could generate output.
+[2026-03-14T02:20:46Z] FINDING — A second detector remains in `initializer/flow/archetype_detection.py` with a different string-only contract, so archetype identity is still not globally consolidated across the repository.
+[2026-03-14T02:20:46Z] CHANGE — Added canonical `id` fields to the active archetype engine outputs in `initializer/engine/archetype_engine.py` while preserving the existing `name` field for compatibility during diagnosis.
+[2026-03-14T02:20:46Z] VALIDATION — Ran `build_initial_spec('Editorial CMS with admin and public site')` and confirmed `spec['archetype'] == 'editorial-cms'` with both `archetype_data.id` and `archetype_data.name` present.
+[2026-03-14T02:20:46Z] VALIDATION — Ran `python -m initializer new` with scripted input and confirmed the flow completed, wrote `output/diag-archetype-contract/spec.json`, and produced 11 stories; the temporary validation output was removed after inspection.
+[2026-03-14T02:21:51Z] INFO — Iteration 1 completed.
+[2026-03-14T02:21:53Z] INFO — Starting iteration 2.
+[2026-03-14T02:26:41Z] LEARNED — `build_initial_spec('Editorial CMS with admin and public site')` seeded `spec["capabilities"]` as `[]` because the active archetype detector did not emit capability arrays, and a direct `apply_capabilities()` repro with `capabilities=['cms', 'public-site']` produced no architecture or story changes because the active engine looked up handlers by `spec["archetype"]`.
+[2026-03-14T02:26:41Z] FINDING — The active capability path was broken in three places at once: explicit capabilities were not canonically produced by the live detector, the capability engine ignored `spec["capabilities"]`, and later architecture/story generation replaced pre-seeded state.
+[2026-03-14T02:26:41Z] CHANGE — Updated the active archetype engine to emit explicit `capabilities` arrays for every archetype and default `editorial-cms` to `cms`; updated the capability engine to iterate canonical capability IDs through the shared registry; changed architecture and story generation to preserve existing enriched state; and seeded a CMS capability story in the active handler.
+[2026-03-14T02:26:41Z] VALIDATION — Ran targeted Python checks confirming `build_initial_spec(...)` now yields `capabilities == ['cms']`, `apply_capabilities()` adds CMS decisions and a CMS story, `generate_architecture()` preserves the capability decision, `generate_stories()` continues IDs from capability-seeded stories, and `check_story_coverage()` returns `[]` for the editorial path.
+[2026-03-14T02:26:41Z] VALIDATION — Ran `python -m initializer new` with scripted editorial input and confirmed the flow completed, wrote `output/capability-pipeline/spec.json`, preserved `capabilities == ['cms']` in the final spec, retained the CMS architecture decision, and produced 12 stories with `ST-001` reserved for the CMS capability story.
+[2026-03-14T02:28:18Z] INFO — Removed the temporary `output/capability-pipeline` validation artifact after inspecting the generated spec and story output.
+[2026-03-14T02:29:01Z] INFO — Iteration 2 completed.
+[2026-03-14T02:29:03Z] INFO — Starting iteration 3.
+[2026-03-14T02:29:27Z] INFO — Ralph loop started. Max iterations: 20.
+[2026-03-14T02:29:27Z] INFO — Starting iteration 1.
+[2026-03-14T02:32:36Z] LEARNED — `initializer/flow/new_project.py` collected `surface` and `deploy_target` answers, but before this step only `surface` was consumed downstream by `initializer/engine/design_system_engine.py`; the live capability path never derived `public-site` from the public-site surface answer.
+[2026-03-14T02:32:36Z] FINDING — The live initializer diverged from `architecture.md` Rule 2 and the explicit-derivation model by collecting a public-site surface answer without translating it into a canonical capability, so capability handlers and capability-dependent engines could not see that user selection.
+[2026-03-14T02:32:36Z] CHANGE — Added `derive_capabilities_from_answers()` to `initializer/flow/new_project.py` so `answers.surface == "admin_plus_public_site"` derives the canonical `public-site` capability before capability application; updated `initializer/capabilities/public_site.py` so its seeded story description explicitly references the public site for coverage checks.
+[2026-03-14T02:32:36Z] VALIDATION — Ran a targeted Python repro confirming an editorial prompt plus `surface=admin_plus_public_site` now yields `capabilities == ['cms', 'public-site']`, `apply_capabilities()` adds the CDN component and public-site story, and `check_story_coverage()` returns `[]`.
+[2026-03-14T02:32:36Z] VALIDATION — Ran `python -m initializer new` with scripted editorial input and confirmed the generated `output/public-site-derivation/spec.json` contained `public-site`, included the CDN component, and preserved a public-site story; the temporary validation output was removed after inspection.
+[2026-03-14T02:33:25Z] INFO — Iteration 1 completed.
+[2026-03-14T02:33:29Z] INFO — Starting iteration 2.
+[2026-03-14T02:35:36Z] LEARNED — The active `validate` CLI flow in `initializer/flow/validate_project.py` still used legacy artifact names, looking for `semantic_spec.json` and `prd.json`, while the live `new` flow writes `output/<slug>/spec.json`, `PRD.md`, `architecture.md`, and story markdown files.
+[2026-03-14T02:35:36Z] FINDING — Running `python -m initializer validate output/validate-contract` after generating a live project skipped `spec.json`, warned that `semantic_spec.json` and `prd.json` were missing, and still returned `Validation OK`, so the downstream validation command did not actually validate the active initializer output.
+[2026-03-14T02:35:36Z] CHANGE — Updated `initializer/flow/validate_project.py` to validate live `spec.json` outputs with `validate_prd()` and `check_story_coverage()`, to accept legacy `semantic-spec.json` or `semantic_spec.json` files for schema-based validation, and to fail when no known spec artifact exists.
+[2026-03-14T02:35:36Z] VALIDATION — Ran `python -m initializer validate output/validate-contract` and confirmed it now checks `spec.json` and reports `✓ spec.json valid`; ran `python -m initializer validate .` and confirmed repository-level `prd.json` validation still works; ran `python -m initializer validate <tempdir>` with `semantic-spec.json` copied from `contracts/semantic_spec.json` and confirmed legacy schema validation still passes; ran `python -m initializer validate <empty-tempdir>` and confirmed the command now fails with `No known spec artifact found`.
+[2026-03-14T02:37:37Z] INFO — Removed the temporary `output/validate-contract` validation artifact after confirming the live validate flow against generated output.
+[2026-03-14T02:38:12Z] INFO — Iteration 2 completed.
+[2026-03-14T02:38:14Z] INFO — Starting iteration 3.
+[2026-03-14T02:44:04Z] INFO — Ralph loop started. Max iterations: 20. Stop mode: diagnosis_iteration.
+[2026-03-14T02:44:05Z] INFO — Starting iteration 1 for story ST-005 under stop mode 'diagnosis_iteration'.
+[2026-03-14T02:45:03Z] INFO — Ralph loop started. Max iterations: 20. Stop mode: diagnosis_iteration.
+[2026-03-14T02:45:03Z] INFO — Starting iteration 1 for story ST-005 under stop mode 'diagnosis_iteration'.
+[2026-03-14T02:45:14Z] INFO — Ralph loop started. Max iterations: 20. Stop mode: diagnosis_iteration.
+[2026-03-14T02:45:14Z] INFO — Starting iteration 1 for story ST-001 under stop mode 'diagnosis_iteration'.
+[2026-03-14T02:47:24Z] LEARNED — `initializer.cli` dispatches the live initializer path through `new` to `initializer.flow.new_project.run_new_project`; the confirmed prompt order is `Describe the project`, `Project name`, `Project slug`, `One sentence summary`, `Choose product surface`, and `Choose deploy target`.
+[2026-03-14T02:47:24Z] LEARNED — The live `new` flow stores the free-text description at `spec["prompt"]` and stores structured answers under `project_name`, `project_slug`, `summary`, `surface`, and `deploy_target`.
+[2026-03-14T02:47:24Z] FINDING — `initializer.cli` exposes `new --spec`, but `initializer.flow.new_project.run_new_project(spec_path=None)` ignores `spec_path` and always enters the interactive prompt flow, so the advertised flag does not currently alter the CLI behavior.
+[2026-03-14T02:47:24Z] FINDING — `initializer.cli` exposes a `plan` subcommand, but `initializer.flow.plan_project` imports missing `collect_input`, `render_prd`, and `render_decisions` helpers from `initializer.flow.new_project`, causing an immediate ImportError before any prompts; `initializer.models.bootstrap.BootstrapInput` also uses `project_summary`, which diverges from the live answer key `summary`.
+[2026-03-14T02:47:24Z] CHANGE — Documented the confirmed live `new` prompt order, collected answer fields, and CLI contract mismatches in `diagnosis.md` for ST-001.
+[2026-03-14T02:47:24Z] CHANGE — Updated `prd.json` to mark ST-001 as done after the CLI flow was mapped from implementation and the mismatches were recorded.
+[2026-03-14T02:47:24Z] VALIDATION — Ran `python -m initializer new --spec /tmp/ignored-spec` with scripted input and confirmed the interactive prompt order still occurs, `output/cli-flow-validation/spec.json` stores `project_name`, `project_slug`, `summary`, `surface`, and `deploy_target`, and the generated output contains `PRD.md`, `architecture.md`, `spec.json`, and story files.
+[2026-03-14T02:47:24Z] VALIDATION — Ran `python -m initializer plan --spec prd.json` and confirmed the CLI currently fails at import time with `ImportError: cannot import name 'collect_input' from 'initializer.flow.new_project'`.
+[2026-03-14T02:48:49Z] INFO — Removed the temporary `output/cli-flow-validation` artifact after inspecting the generated CLI validation output.
+[2026-03-14T02:49:47Z] INFO — Iteration 1 completed for story ST-001.
+[2026-03-14T02:49:49Z] INFO — Starting iteration 2 for story ST-002 under stop mode 'diagnosis_iteration'.
+[2026-03-14T02:51:50Z] LEARNED — The active archetype detector used by `initializer.flow.new_project` is `initializer.engine.archetype_engine.detect_archetype()`, and its current return shape is a dict with exact keys `id`, `name`, `stack`, `features`, and `capabilities` for every branch.
+[2026-03-14T02:51:50Z] LEARNED — `build_initial_spec()` writes `spec["archetype"] = archetype_data["id"]` and preserves the full detector payload at `spec["archetype_data"]`; repo search found the only direct `spec["archetype"]` readers in `initializer.engine.constraint_engine`, `initializer.engine.design_system_engine`, and `initializer.engine.prd_intelligence_engine`.
+[2026-03-14T02:51:50Z] FINDING — Archetype identity is consistent inside the active `new` pipeline because downstream readers expect the same string IDs stored in `spec["archetype"]`, but repository-wide identity is still inconsistent because `initializer.flow.archetype_detection.detect_archetype()` remains as a second, string-only detector contract.
+[2026-03-14T02:51:50Z] CHANGE — Expanded `diagnosis.md` D-001 with the exact active detector shape, the confirmed `spec["archetype"]` consumers, and the repository-level inconsistency classification for ST-002.
+[2026-03-14T02:51:50Z] CHANGE — Updated `prd.json` to mark ST-002 as done after the archetype detection contract and consumer set were confirmed from code.
+[2026-03-14T02:51:50Z] VALIDATION — Ran a targeted Python check confirming active `detect_archetype()` returns dicts with keys `id`, `name`, `stack`, `features`, and `capabilities` for editorial, marketplace, SaaS, and fallback prompts, while the legacy detector still returns a bare string; ran `rg` to confirm the only direct `spec["archetype"]` readers are the constraint, design-system, and PRD-intelligence engines.
+[2026-03-14T02:53:22Z] INFO — Iteration 2 completed for story ST-002.
+[2026-03-14T02:53:24Z] INFO — Starting iteration 3 for story ST-003 under stop mode 'diagnosis_iteration'.
+[2026-03-14T02:55:21Z] LEARNED — The live `new` flow produces `spec["capabilities"]` in two steps: `build_initial_spec()` copies `detect_archetype(prompt)["capabilities"]`, then `derive_capabilities_from_answers()` adds `public-site` when `answers.surface == "admin_plus_public_site"`; the alternate `initializer/runtime/spec_builder.py` path still initializes `capabilities` to an empty list only.
+[2026-03-14T02:55:21Z] LEARNED — The active capability registry in `initializer/engine/capability_registry.py` exposes exactly four canonical keys: `cms`, `public-site`, `scheduled-jobs`, and `i18n`, and `initializer/engine/capability_engine.py` applies them by iterating `spec["capabilities"]` and invoking the matching handlers.
+[2026-03-14T02:55:21Z] FINDING — Capability production and capability consumption remain only partially aligned: the live initializer currently produces `cms` from the editorial archetype and may derive `public-site` from the surface answer, but the inspected live flow does not derive `scheduled-jobs` or `i18n` even though registry handlers and downstream consumers exist for those IDs.
+[2026-03-14T02:55:21Z] CHANGE — Expanded `diagnosis.md` for ST-003 with the exact `spec["capabilities"]` producer path, the inspected capability registry keys, the confirmed application path through `apply_capabilities()`, and the remaining produced-vs-consumed mismatch.
+[2026-03-14T02:55:21Z] CHANGE — Updated `prd.json` to mark ST-003 as done after the capability production and application contract was verified from implementation.
+[2026-03-14T02:55:21Z] VALIDATION — Ran `rg` across flow, engine, validation, and risk modules to confirm the canonical capability IDs consumed in the repository; ran a targeted Python repro confirming an editorial prompt yields `['cms']`, answer derivation extends that to `['cms', 'public-site']`, the registry keys are `['cms', 'i18n', 'public-site', 'scheduled-jobs']`, and `apply_capabilities()` adds the expected CMS decisions, CDN component, and seeded stories.
+[2026-03-14T02:55:57Z] INFO — Iteration 3 completed for story ST-003.
+[2026-03-14T02:56:00Z] INFO — Starting iteration 4 for story ST-004 under stop mode 'diagnosis_iteration'.
+[2026-03-14T02:56:58Z] LEARNED — The active architecture path in `initializer/flow/new_project.py` runs in this order: `build_initial_spec()` seeds `architecture = {}`, `apply_capabilities()` appends capability architecture state, `apply_knowledge()` appends decision guidance, `generate_architecture()` synthesizes the final architecture object from the current spec, and `refine_spec()` appends more architecture decisions afterward.
+[2026-03-14T02:56:58Z] LEARNED — The inspected upstream architecture enrichments in the live flow come from capability handlers (`cms`, `public-site`, `scheduled-jobs`, `i18n`) plus `initializer/engine/knowledge_engine.py`; the active runtime path does not use `initializer/synthesis/architecture.py`.
+[2026-03-14T02:56:58Z] FINDING — The live architecture stage no longer blindly overwrites upstream `components` and `decisions`, but the merge is partial: `initializer/engine/architecture_engine.py` preserves only `style`, `components`, and `decisions`, so any future architecture keys outside those fields would be discarded by the later assignment.
+[2026-03-14T02:56:58Z] FINDING — Architecture deduplication is based on exact dict equality, not canonical component identity; a targeted repro with manual `scheduled-jobs` capability input produced two distinct `worker` components after architecture synthesis because the capability handler and the generator describe the worker differently.
+[2026-03-14T02:56:58Z] CHANGE — Expanded `diagnosis.md` D-004 with the confirmed architecture-generation order, the exact upstream enrichment sources, the current merge behavior, and the remaining partial-merge/duplicate-component risk for ST-004.
+[2026-03-14T02:56:58Z] CHANGE — Updated `prd.json` to mark ST-004 as done after the architecture synthesis order, upstream enrichments, and merge-vs-overwrite behavior were confirmed from code and documented.
+[2026-03-14T02:56:58Z] VALIDATION — Ran `rg` and source inspection across `initializer/flow/new_project.py`, `initializer/engine/architecture_engine.py`, `initializer/engine/capability_engine.py`, `initializer/engine/knowledge_engine.py`, `initializer/capabilities/*.py`, `initializer/ai/refine_engine.py`, and `initializer/synthesis/architecture.py` to confirm the active architecture producer/consumer path; ran targeted Python repros confirming capability and knowledge decisions survive `generate_architecture()` and `refine_spec()`, and that a manually supplied `scheduled-jobs` capability yields duplicate `worker` components after synthesis because deduplication is exact-object based.
+[2026-03-14T02:58:59Z] INFO — Iteration 4 completed for story ST-004.
+[2026-03-14T02:59:01Z] INFO — Starting iteration 5 for story ST-005 under stop mode 'diagnosis_iteration'.
+[2026-03-14T03:00:54Z] LEARNED — The live `new` flow seeds `spec["stories"]` empty, then mutates it through three active producer stages only: capability handlers via `initializer.engine.capability_engine.apply_capabilities()`, `initializer.engine.story_engine.generate_stories()`, and `initializer.ai.refine_engine.refine_stories()`; the separate `initializer/synthesis/stories.py` generator is present in the repository but unreferenced by the active initializer path.
+[2026-03-14T03:00:54Z] LEARNED — Story identity is currently produced by three different strategies: capability handlers use `len(stories)+1`, `initializer.engine.story_engine.generate_stories()` continues from the highest numeric `ST-###` already present while ignoring non-`ST-` IDs, and `initializer.ai.refine_engine.refine_stories()` appends fixed IDs `ST-900` and `ST-901`; repo search found no live producer that sets `depends_on`, so ordering is append order rather than dependency-driven.
+[2026-03-14T03:00:54Z] FINDING — Story identity and ordering are fragile rather than canonical: capability order changes which concern receives `ST-001`, repeated `apply_capabilities()` or `generate_stories()` calls append duplicates instead of reconciling existing stories, noncanonical IDs such as `CUSTOM-1` coexist with numbered IDs, and rerunning `generate_stories()` after refinement resumes at `ST-902+` because `ST-900` and `ST-901` become the numeric ceiling.
+[2026-03-14T03:00:54Z] FINDING — Capability-derived stories do not consistently satisfy downstream coverage checks: `scheduled-jobs` and `i18n` handlers seed stories, but `initializer.validation.story_coverage.check_story_coverage()` only matches literal capability tokens in story descriptions, so both capabilities are still reported missing; `scheduled-jobs` also overlaps semantically with the feature-driven `Implement scheduled publishing` story when both are present.
+[2026-03-14T03:00:54Z] CHANGE — Documented the confirmed story producer set, ID-generation strategies, append-order behavior, duplication risks, and capability-story coverage mismatches in `diagnosis.md` for ST-005.
+[2026-03-14T03:00:54Z] CHANGE — Updated `prd.json` to mark ST-005 as done after the story generation contract and mismatch set were confirmed from implementation.
+[2026-03-14T03:00:54Z] VALIDATION — Ran targeted Python repros confirming active editorial capability stories occupy `ST-001` and `ST-002`, reversing capability order swaps those IDs, repeated capability/story generation duplicates stories, refinement appends `ST-900` and `ST-901` and causes later generation to continue at `ST-902+`, `scheduled-jobs` and `i18n` fail coverage despite seeded stories, and the active `new` flow calls `initializer.engine.story_engine.generate_stories()` while legacy `initializer/synthesis/stories.py` remains unused.
+[2026-03-14T03:03:16Z] INFO — Iteration 5 completed for story ST-005.
+[2026-03-14T03:03:18Z] INFO — Starting iteration 6 for story ST-006 under stop mode 'diagnosis_iteration'.
+[2026-03-14T03:05:56Z] LEARNED — Inspected `initializer/engine/constraint_engine.py`, `risk_engine.py`, `design_system_engine.py`, and `architeture_diagram_engine.py` against the live producer path in `initializer/flow/new_project.py`; the active initializer does not call any of those downstream engines or their renderers, so generated specs currently omit `constraints`, `risks`, `design_system`, and `diagram` sections.
+[2026-03-14T03:05:56Z] LEARNED — Constraint, risk, and design-system engines currently consume canonical live fields: `spec["archetype"]`, `spec["capabilities"]`, `spec["answers"]["surface"]`, and `spec["answers"]["deploy_target"]`.
+[2026-03-14T03:05:56Z] FINDING — The architecture diagram engine is not aligned with the live architecture producer contract: it hardcodes a `cms` component name for core edges, while the active architecture synthesis path emits `api` and never produces a `cms` component, so diagram generation omits core service relationships.
+[2026-03-14T03:05:56Z] CHANGE — Expanded `diagnosis.md` D-006 with the inspected downstream engine contracts, the live wiring gap, and the confirmed diagram naming dependency failure for ST-006.
+[2026-03-14T03:05:56Z] VALIDATION — Ran repo-wide `rg` callsite checks confirming no live invocations of the downstream constraint, risk, design-system, or diagram engines/renderers; ran a targeted Python repro through the active `new_project` pipeline confirming the final spec lacks optional downstream sections, that constraints/risks/design generation accept the live canonical fields, and that diagram generation over architecture components `['cdn', 'frontend', 'api', 'database', 'object-storage', 'worker']` yields only `worker -> database` and `cdn -> frontend` because no `cms` node exists.
+[2026-03-14T03:06:56Z] INFO — Iteration 6 completed for story ST-006.
+[2026-03-14T03:06:58Z] INFO — Starting iteration 7 for story ST-007 under stop mode 'diagnosis_iteration'.
+[2026-03-14T03:10:06Z] LEARNED — The live canonical contract now centers on `initializer/flow/new_project.py`: it stores `spec["archetype"]` as a string ID, keeps richer detector metadata in `spec["archetype_data"]`, stores CLI answers under `project_name`, `project_slug`, `summary`, `surface`, and `deploy_target`, and derives only the `public-site` capability from answers.
+[2026-03-14T03:10:06Z] LEARNED — Legacy or alternate paths still drift from that live contract: `initializer/flow/archetype_detection.py` returns a bare string, `initializer/runtime/spec_builder.py` seeds `capabilities` empty without derivation, and `initializer/flow/plan_project.py` plus `initializer/models/bootstrap.py` still expect non-live helper names or answer fields.
+[2026-03-14T03:10:06Z] FINDING — The remaining canonical-model work is primarily sequencing work now: shared archetype/answer contracts must be unified before capability derivation, composition semantics, or downstream engine wiring can be made reliable across the repository.
+[2026-03-14T03:10:06Z] DECISION — The next implementation iteration should proceed in this order: shared spec contract correction, explicit capability derivation, architecture/story composition rules, downstream engine alignment, then end-to-end validation.
+[2026-03-14T03:10:06Z] CHANGE — Added a canonical correction plan to `diagnosis.md` that restates the roles of `archetype`, `capabilities`, `features`, and `answers`, and maps the next implementation targets to `ST-008` through `ST-012`.
+[2026-03-14T03:10:06Z] CHANGE — Appended DEC-009 to `decisions.md` to preserve the ordered correction sequence as a stable decision, and updated only ST-007 to `done` in `prd.json`.
+[2026-03-14T03:10:06Z] VALIDATION — Ran `python -m json.tool prd.json >/dev/null` to confirm the backlog file still parses after the ST-007 update.
+[2026-03-14T03:10:06Z] VALIDATION — Verified the new planning artifacts with `rg`, confirming `diagnosis.md` contains `Canonical correction plan`, `decisions.md` contains `DEC-009`, and `prd.json` marks `ST-007` as `done` while `ST-008+` remain pending.
+[2026-03-14T03:10:56Z] INFO — All required stories for stop mode 'diagnosis_iteration' completed after iteration 7.
+[2026-03-14T14:15:44Z] INFO — Ralph loop started. Max iterations: 20. Stop mode: diagnosis_iteration.
+[2026-03-14T14:15:44Z] INFO — Ralph loop exited immediately because all required stories for stop mode 'diagnosis_iteration' were already done.
+[2026-03-14T14:17:17Z] INFO — Ralph loop started. Max iterations: 20. Stop mode: minimum_working.
+[2026-03-14T14:17:19Z] INFO — Starting iteration 1 for story ST-008 under stop mode 'minimum_working'.
+[2026-03-14T14:21:43Z] LEARNED — The active `new` flow already stored `spec["archetype"]` as the canonical string from `initializer.engine.archetype_engine.detect_archetype()`, but repository-level drift remained because `initializer.flow.archetype_detection.detect_archetype()` still returned ad hoc strings and alternate entry points such as `initializer.runtime.spec_builder.build_semantic_spec()` accepted unconstrained archetype values.
+[2026-03-14T14:21:43Z] FINDING — Stable archetype identity was still only partially enforced: the legacy detector could emit the non-canonical `api-service` label, and alternate spec/playbook helpers could persist or look up non-canonical archetype names outside the live `new` path.
+[2026-03-14T14:21:43Z] CHANGE — Consolidated archetype identity around `initializer.engine.archetype_engine` by adding `canonical_archetype_id()`, making `initializer.flow.archetype_detection.detect_archetype()` delegate to the canonical detector, and normalizing archetype input in `initializer.runtime.spec_builder.build_semantic_spec()` and `initializer.playbooks.playbook_loader.load_playbook()`.
+[2026-03-14T14:21:43Z] VALIDATION — Ran targeted Python checks confirming both detector modules now return identical canonical metadata for an editorial prompt, `canonical_archetype_id('api-service')` normalizes to `generic-web-app`, `build_semantic_spec()` stores canonical string IDs, and `load_playbook('api-service')` resolves through the canonical playbook name in a temporary playbook directory.
+[2026-03-14T14:21:43Z] VALIDATION — Ran `printf 'Editorial CMS with admin and public site\nST008 Archetype\nst008-archetype\nStable archetype validation run\n\n\n' | python -m initializer new` and `python -m initializer validate output/st008-archetype`; confirmed the initializer completed without archetype key mismatch errors, generated `spec.json` with `archetype == 'editorial-cms'` and `archetype_data.id == 'editorial-cms'`, and the temporary validation output was removed after inspection.
+[2026-03-14T14:22:41Z] VALIDATION — Ran `python -m json.tool prd.json >/dev/null` and read back story statuses from `prd.json`; confirmed the backlog file still parses and only `ST-008` moved to `done` while `ST-009` through `ST-012` remain unchanged at `todo`.
+[2026-03-14T14:23:32Z] INFO — Iteration 1 completed for story ST-008.
+[2026-03-14T14:23:34Z] INFO — Starting iteration 2 for story ST-009 under stop mode 'minimum_working'.
+[2026-03-14T14:29:42Z] LEARNED — The remaining `ST-009` contract gap was repository-wide rather than in the active `new` flow: `initializer/flow/new_project.py` already derived explicit canonical capabilities for the live CLI path, but `initializer/runtime/spec_builder.py` still hardcoded `capabilities` to `[]`, so alternate spec construction paths could still emit specs without explicit capability state.
+[2026-03-14T14:29:42Z] CHANGE — Added shared capability derivation in `initializer/engine/capability_derivation.py`, delegated `initializer/flow/new_project.py` to that shared derivation step, normalized `initializer/engine/capability_engine.py` to iterate canonical registry-backed capability IDs only, and updated `initializer/runtime/spec_builder.py` to derive explicit capabilities from canonical archetype defaults plus structured answers.
+[2026-03-14T14:29:42Z] VALIDATION — Ran targeted Python checks confirming the live editorial path still derives `['cms', 'public-site']`, capability application normalizes duplicate or unknown values before invoking handlers, capability-seeded architecture decisions survive `generate_architecture()`, story generation continues from capability-seeded IDs, and `build_semantic_spec()` now derives `['cms', 'public-site', 'scheduled-jobs', 'i18n']` from nested runtime answer shapes with all produced IDs present in `CAPABILITY_REGISTRY`.
+[2026-03-14T14:29:42Z] VALIDATION — Ran `printf 'Editorial CMS with admin and public site\nST009 Capability Derivation\nst009-capability-derivation\nCapability derivation validation run\n\n\n' | python -m initializer new`, inspected `output/st009-capability-derivation/spec.json`, and ran `python -m initializer validate output/st009-capability-derivation`; confirmed the initializer still completes, the generated spec preserves `capabilities == ['cms', 'public-site']`, capability-driven CDN/story output is present, and validation passes against the live output artifact.
+[2026-03-14T14:30:32Z] INFO — Removed the temporary `output/st009-capability-derivation` validation artifact after inspection.
+[2026-03-14T14:30:32Z] VALIDATION — Ran `python -m json.tool prd.json >/dev/null`, confirmed `ST-009` is now `done` while `ST-010` through `ST-012` remain `todo`, and verified the temporary validation output directory no longer exists.
+[2026-03-14T14:31:16Z] INFO — Iteration 2 completed for story ST-009.
+[2026-03-14T14:31:19Z] INFO — Starting iteration 3 for story ST-010 under stop mode 'minimum_working'.
+[2026-03-14T14:37:37Z] LEARNED — The active overwrite risk for ST-010 had narrowed to composition semantics inside the live generators: `initializer.engine.architecture_engine.generate_architecture()` already preserved current `components` and `decisions`, but it rebuilt the final object from a fixed shape and merged components only by exact dict equality; `initializer.engine.story_engine.generate_stories()` already carried forward the incoming story list, but it still composed canonical generated stories by blind append.
+[2026-03-14T14:37:37Z] FINDING — Upstream enriched state was still only partially preserved: arbitrary architecture keys such as injected notes were dropped by the final architecture assignment, overlapping `worker` components from capability and feature synthesis survived as duplicates, and rerunning story generation duplicated canonical setup/feature stories instead of intentionally merging with richer preseeded story entries.
+[2026-03-14T14:37:37Z] CHANGE — Updated `initializer/engine/architecture_engine.py` to clone the incoming architecture object, preserve noncanonical top-level keys, merge components by component `name`, deduplicate decisions through the existing append path, and retain conflicting component field variants as explicit `*_alternatives` metadata while preferring the concrete backend technology over the `background-worker` placeholder.
+[2026-03-14T14:37:37Z] CHANGE — Updated `initializer/engine/story_engine.py` to upsert canonical generated stories through stable `story_key` values, preserve existing story IDs and enriched fields when a canonical story already exists, and store alternate generated title/description text instead of silently overwriting or duplicating those stories.
+[2026-03-14T14:37:37Z] VALIDATION — Ran targeted Python repros confirming `generate_architecture()` now preserves injected architecture keys, collapses overlapping scheduled-job `worker` components into one merged component, and records alternate role/technology values; confirmed rerunning `generate_stories()` keeps the story count stable and that a preseeded `Setup database` story keeps its custom description while receiving the canonical `story_key`.
+[2026-03-14T14:37:37Z] VALIDATION — Ran `printf 'Editorial CMS with admin and public site and scheduled publishing\nST010 Composition\nst010-composition\nComposition validation run\n\n\n' | python -m initializer new`, inspected `output/st010-composition/spec.json`, and ran `python -m initializer validate output/st010-composition`; confirmed the live editorial flow still completes, validation passes against the generated artifact, the final spec contains a single `worker` component, and the generated story list has no duplicate titles.
+[2026-03-14T14:38:54Z] INFO — Iteration 3 completed for story ST-010.
+[2026-03-14T14:38:57Z] INFO — Starting iteration 4 for story ST-011 under stop mode 'minimum_working'.
+[2026-03-14T14:44:36Z] LEARNED — The downstream constraint, design-system, risk, and diagram engines already existed with matching renderers, but the live `initializer.flow.new_project` path still never derived or wrote those optional sections; field-level inspection confirmed the remaining naming mismatch was in `initializer.engine.architeture_diagram_engine`, which still looked for a `cms` component name instead of the canonical `api` component emitted by architecture synthesis.
+[2026-03-14T14:44:36Z] CHANGE — Updated `initializer/flow/new_project.py` to derive `constraints`, `design_system`, `risks`, and `diagram` from the canonical spec after refinement, persist those sections into `spec.json`, and write the existing downstream docs/diagram renderers during the live `new` flow; updated `initializer/engine/architeture_diagram_engine.py` to resolve the application node through canonical `api` naming with `cms` fallback and to emit edges for `frontend -> api`, `api -> database`, `api -> object-storage`, `worker -> database`, and `cdn -> frontend` when those canonical components exist.
+[2026-03-14T14:44:36Z] VALIDATION — Ran `python -m py_compile initializer/flow/new_project.py initializer/engine/architeture_diagram_engine.py`; ran a targeted Python contract check confirming downstream sections populate from canonical `archetype`, `capabilities`, and `answers`, and that the diagram now includes the expected canonical edges; ran `printf 'Editorial CMS with admin and public site and scheduled publishing\nST011 Downstream Alignment\nst011-downstream-alignment\nDownstream alignment validation run\n\n\n' | python -m initializer new` plus `python -m initializer validate output/st011-downstream-alignment`, then inspected `output/st011-downstream-alignment/spec.json` and `output/st011-downstream-alignment/docs/`; confirmed the generated spec now contains `constraints`, `design_system`, `risks`, and `diagram`, and that matching docs plus `docs/architecture/diagram.mmd` were written successfully.
+[2026-03-14T14:45:55Z] INFO — Iteration 4 completed for story ST-011.
+[2026-03-14T14:45:57Z] INFO — Starting iteration 5 for story ST-012 under stop mode 'minimum_working'.
+[2026-03-14T14:48:57Z] LEARNED — The live editorial reference scenario now runs end to end through `initializer.flow.new_project.run_new_project`, producing `output/st012-editorial-validation/spec.json` with `archetype == editorial-cms`, `capabilities == ['cms', 'public-site']`, the canonical `nextjs/payload/postgres` stack, six synthesized architecture components (`cdn`, `frontend`, `api`, `database`, `object-storage`, `worker`), 13 stories, and downstream `constraints`, `design_system`, `risks`, and `diagram` sections plus matching docs.
+[2026-03-14T14:48:57Z] VALIDATION — Ran `printf 'Editorial CMS with admin panel, public website, media library, preview, and scheduled publishing for articles\nST012 Editorial Validation\nst012-editorial-validation\nEditorial validation run for the reference CMS scenario\n\n\n' | python -m initializer new` and `python -m initializer validate output/st012-editorial-validation`; confirmed the editorial prompt completed successfully, `spec.json` passed validation, `architecture.md` and `docs/architecture/diagram.mmd` were written, the diagram connected `frontend -> api -> database/object-storage` plus `worker -> database` and `cdn -> frontend`, and the generated story set remained coherent with unique titles across `ST-001` through `ST-011` plus `ST-900` and `ST-901`.
+[2026-03-14T14:48:57Z] CHANGE — Updated only `ST-012` to `done` in `prd.json` after the recorded editorial end-to-end validation satisfied its acceptance criteria.
+[2026-03-14T14:48:57Z] VALIDATION — Ran `python -m json.tool prd.json >/dev/null` to confirm the backlog file still parses after marking `ST-012` done.
+[2026-03-14T14:49:52Z] INFO — All required stories for stop mode 'minimum_working' completed after iteration 5.
+[2026-03-14T15:11:54Z] LEARNED — `README.md` was empty even though the repository now depends on multiple diagnosis artifacts plus a partially unified implementation; future agents lacked a single onboarding document that reconciled intent, active behavior, and legacy boundaries.
+[2026-03-14T15:11:55Z] CHANGE — Replaced the empty `README.md` with a detailed onboarding document for future ChatGPT sessions covering project identity, mandatory read order, canonical domain concepts, the active `initializer new` pipeline, output artifacts, validated reference scenario, and known legacy or partially aligned modules.
+[2026-03-14T15:11:56Z] VALIDATION — Cross-checked the new README content against the current code paths in `initializer/cli.py`, `initializer/flow/new_project.py`, the core engines, and the reference output in `output/st012-editorial-validation`; also confirmed `python -m initializer --help` lists the documented subcommands while `validate` currently requires installed dependencies such as `jsonschema`.
