@@ -12,12 +12,18 @@ from initializer.synthesis.stories import generate_stories
 from initializer.engine.capability_engine import apply_capabilities
 from initializer.engine.risk_engine import analyze_risks
 from initializer.engine.design_system_engine import generate_design_system
+from initializer.engine.constraint_engine import generate_constraints
+from initializer.engine.knowledge_engine import generate_knowledge
+from initializer.engine.prd_intelligence_engine import generate_prd_intelligence
 
 from initializer.renderers.prd_renderer import render_prd
 from initializer.renderers.stories_renderer import write_stories
 from initializer.renderers.architecture_renderer import write_architecture
 from initializer.renderers.risks_renderer import write_risks
 from initializer.renderers.design_system_renderer import write_design_system
+from initializer.renderers.constraints_renderer import write_constraints
+from initializer.renderers.knowledge_renderer import write_knowledge
+from initializer.renderers.prd_intelligence_renderer import write_prd_intelligence
 
 from initializer.renderers.project_files import (
     write_basic_files,
@@ -30,7 +36,7 @@ OUTPUT_DIR = Path("output")
 
 
 # --------------------------------------------------
-# CLI INPUT HELPERS
+# CLI HELPERS
 # --------------------------------------------------
 
 
@@ -77,7 +83,7 @@ def prompt_boolean(label, default):
 
 
 # --------------------------------------------------
-# FILESYSTEM HELPERS
+# FILESYSTEM
 # --------------------------------------------------
 
 
@@ -151,7 +157,7 @@ def collect_input():
 
 
 # --------------------------------------------------
-# MAIN PIPELINE
+# PIPELINE
 # --------------------------------------------------
 
 
@@ -166,7 +172,7 @@ def run_new_project(spec=None):
     project_dir = create_project_dir(slug)
 
     # --------------------------------------------------
-    # BUILD SEMANTIC SPEC
+    # SEMANTIC SPEC
     # --------------------------------------------------
 
     spec = build_semantic_spec(
@@ -219,13 +225,37 @@ def run_new_project(spec=None):
     spec["design_system"] = design_system
 
     # --------------------------------------------------
-    # WRITE SEMANTIC SPEC
+    # CONSTRAINT ENGINE
+    # --------------------------------------------------
+
+    constraints = generate_constraints(spec)
+
+    spec["constraints"] = constraints
+
+    # --------------------------------------------------
+    # KNOWLEDGE ENGINE
+    # --------------------------------------------------
+
+    knowledge = generate_knowledge(spec)
+
+    spec["knowledge"] = knowledge
+
+    # --------------------------------------------------
+    # PRD INTELLIGENCE ENGINE
+    # --------------------------------------------------
+
+    prd_intelligence = generate_prd_intelligence(spec)
+
+    spec["prd_intelligence"] = prd_intelligence
+
+    # --------------------------------------------------
+    # WRITE SPEC
     # --------------------------------------------------
 
     write_spec(spec, project_dir)
 
     # --------------------------------------------------
-    # BASE PROJECT FILES
+    # BASE FILES
     # --------------------------------------------------
 
     write_basic_files(project_dir)
@@ -242,7 +272,7 @@ def run_new_project(spec=None):
 
     prd = render_prd(spec)
 
-    (Path(project_dir) / "PRD.md").write_text(prd)
+    (project_dir / "PRD.md").write_text(prd)
 
     write_stories(project_dir, spec["stories"])
 
@@ -252,9 +282,11 @@ def run_new_project(spec=None):
 
     write_design_system(project_dir, spec["design_system"])
 
-    # --------------------------------------------------
-    # DONE
-    # --------------------------------------------------
+    write_constraints(project_dir, spec["constraints"])
+
+    write_knowledge(project_dir, spec["knowledge"])
+
+    write_prd_intelligence(project_dir, spec["prd_intelligence"])
 
     print()
     print("Bootstrap generated successfully.")
