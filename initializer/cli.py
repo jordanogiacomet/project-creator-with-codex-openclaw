@@ -24,6 +24,9 @@ def main():
         help="Also run AI architecture review (requires OPENAI_API_KEY).",
     )
 
+    prepare_parser = subparsers.add_parser("prepare")
+    prepare_parser.add_argument("path", help="Path to generated project directory.")
+
     refine_parser = subparsers.add_parser("refine")
     refine_parser.add_argument("path")
 
@@ -49,6 +52,11 @@ def main():
         from initializer.flow.enrich_project import run_enrich_project
 
         return run_enrich_project(args.path, review=args.review)
+
+    elif args.command == "prepare":
+        from initializer.flow.prepare_project import run_prepare_project
+
+        return run_prepare_project(args.path)
 
     elif args.command == "refine":
         from initializer.flow.refine_project import run_refine_project
