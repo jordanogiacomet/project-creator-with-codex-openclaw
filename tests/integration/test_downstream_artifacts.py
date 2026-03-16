@@ -1,8 +1,14 @@
+"""Integration tests for derive_downstream_artifacts.
+
+Updated to validate project_structure and domain_model
+are populated alongside existing downstream sections.
+"""
+
 from initializer.flow.new_project import derive_downstream_artifacts
 
 
-def test_derive_downstream_artifacts_populates_all_expected_sections():
-    spec = {
+def _make_editorial_spec():
+    return {
         "prompt": "Editorial CMS with admin panel and public website",
         "archetype": "editorial-cms",
         "archetype_data": {
@@ -75,8 +81,12 @@ def test_derive_downstream_artifacts_populates_all_expected_sections():
         },
     }
 
+
+def test_derive_downstream_artifacts_populates_all_expected_sections():
+    spec = _make_editorial_spec()
     result = derive_downstream_artifacts(spec)
 
+    # Original sections
     assert "constraints" in result
     assert "design_system" in result
     assert "risks" in result
@@ -94,3 +104,91 @@ def test_derive_downstream_artifacts_populates_all_expected_sections():
     assert ("api", "object_storage") in result["diagram"]["edges"]
     assert ("worker", "database") in result["diagram"]["edges"]
     assert ("cdn", "frontend") in result["diagram"]["edges"]
+
+    # New sections
+    assert "project_structure" in result
+    assert "domain_model" in result
+
+
+def test_derive_downstream_project_structure_has_expected_shape():
+    spec = _make_editorial_spec()
+    result = derive_downstream_artifacts(spec)
+
+    ps = result["project_structure"]
+    assert "root_type" in ps
+    assert "ecosystem" in ps
+    assert "directories" in ps
+    assert "root_files" in ps
+
+    assert ps["ecosystem"] == "node"
+    assert isinstance(ps["directories"], list)
+    assert len(ps["directories"]) > 0
+
+    paths = [d["path"] for d in ps["directories"]]
+    assert "src/collections" in paths  # Payload-specific
+
+
+def test_derive_downstream_domain_model_has_expected_shape():
+    spec = _make_editorial_spec()
+    result = derive_downstream_artifacts(spec)
+
+    dm = result["domain_model"]
+    assert "entities" in dm
+    assert "roles" in dm
+    assert "auth_model" in dm
+    assert "business_rules" in dm
+
+    entity_names = [e["name"] for e in dm["entities"]]
+    assert "User" in entity_names
+    assert "Article" in entity_names
+
+    role_names = [r["name"] for r in dm["roles"]]
+    assert "admin" in role_names
+    assert "editor" in role_names
+    assert "reviewer" in role_names
+
+    assert dm["auth_model"]["strategy"] == "email_password"
+    assert len(dm["business_rules"]) > 0
+
+
+def test_derive_downstream_domain_model_for_backoffice():
+    spec = _make_editorial_spec()
+    spec["archetype"] = "backoffice"
+    spec["discovery"] = {
+        "decision_signals": {
+            "app_shape": "backoffice",
+            "primary_audience": "internal_teams",
+            "core_work_features": ["deadlines", "approvals"],
+        },
+    }
+
+    result = derive_downstream_artifacts(spec)
+    dm = result["domain_model"]
+
+    entity_names = [e["name"] for e in dm["entities"]]
+    assert "Record" in entity_names
+
+    record = next(e for e in dm["entities"] if e["name"] == "Record")
+    assert "pending_approval" in record["states"]
+    assert "due_date" in record["fields"]
+
+    role_names = [r["name"] for r in dm["roles"]]
+    assert "operator" in role_names
+    assert "manager" in role_names
+
+
+def test_derive_downstream_project_structure_for_python_stack():
+    spec = _make_editorial_spec()
+    spec["stack"] = {
+        "frontend": "",
+        "backend": "django",
+        "database": "postgres",
+    }
+
+    result = derive_downstream_artifacts(spec)
+    ps = result["project_structure"]
+
+    assert ps["ecosystem"] == "python"
+    paths = [d["path"] for d in ps["directories"]]
+    assert "config" in paths
+    assert "apps/core" in paths

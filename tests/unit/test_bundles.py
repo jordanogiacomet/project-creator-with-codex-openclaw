@@ -1,3 +1,11 @@
+"""Tests for the codex and openclaw bundle generators.
+
+Updated to validate:
+- commands.json has real commands (not empty strings)
+- execution plan includes depends_on when present
+- commands are stack-aware
+"""
+
 import json
 from pathlib import Path
 
@@ -26,10 +34,32 @@ def _make_spec(**overrides):
             "decisions": ["Implement structured logging."],
         },
         "stories": [
-            {"id": "ST-001", "story_key": "bootstrap.repository", "title": "Initialize project repository", "description": "Create project structure."},
-            {"id": "ST-002", "story_key": "bootstrap.database", "title": "Setup database", "description": "Configure database."},
-            {"id": "ST-003", "story_key": "feature.authentication", "title": "Implement authentication", "description": "Add auth."},
-            {"id": "ST-900", "title": "Setup monitoring and logging", "description": "Add monitoring."},
+            {
+                "id": "ST-001",
+                "story_key": "bootstrap.repository",
+                "title": "Initialize project repository",
+                "description": "Create project structure.",
+                "depends_on": [],
+            },
+            {
+                "id": "ST-002",
+                "story_key": "bootstrap.database",
+                "title": "Setup database",
+                "description": "Configure database.",
+                "depends_on": ["bootstrap.repository"],
+            },
+            {
+                "id": "ST-003",
+                "story_key": "feature.authentication",
+                "title": "Implement authentication",
+                "description": "Add auth.",
+                "depends_on": ["bootstrap.backend", "bootstrap.frontend"],
+            },
+            {
+                "id": "ST-900",
+                "title": "Setup monitoring and logging",
+                "description": "Add monitoring.",
+            },
         ],
         "answers": {
             "project_name": "Test Project",
@@ -76,12 +106,9 @@ def test_codex_bundle_agents_md_has_scope_boundaries(tmp_path):
 
     content = (tmp_path / ".codex" / "AGENTS.md").read_text()
 
-    # Should NOT add public-site, CMS, i18n
     assert "Do NOT add a public-facing site" in content
     assert "Do NOT add CMS" in content
     assert "Do NOT add i18n" in content
-
-    # Should NOT restrict scheduled-jobs since it's in capabilities
     assert "Do NOT add background workers" not in content
 
 
@@ -154,11 +181,9 @@ def test_openclaw_bundle_execution_plan_has_correct_phases(tmp_path):
     assert "features" in plan["phases"]
     assert "operations" in plan["phases"]
 
-    # Check ordering
     stories = plan["stories"]
     phases_in_order = [s["phase"] for s in stories]
 
-    # Bootstrap should come before features, features before operations
     bootstrap_indices = [i for i, p in enumerate(phases_in_order) if p == "bootstrap"]
     feature_indices = [i for i, p in enumerate(phases_in_order) if p == "features"]
     ops_indices = [i for i, p in enumerate(phases_in_order) if p == "operations"]
@@ -181,6 +206,18 @@ def test_openclaw_bundle_execution_plan_all_stories_pending(tmp_path):
         assert "phase" in story
 
 
+def test_openclaw_bundle_execution_plan_includes_depends_on(tmp_path):
+    spec = _make_spec()
+    write_openclaw_bundle(tmp_path, spec)
+
+    plan = json.loads((tmp_path / ".openclaw" / "execution-plan.json").read_text())
+
+    db_story = next((s for s in plan["stories"] if s["id"] == "ST-002"), None)
+    assert db_story is not None
+    assert "depends_on" in db_story
+    assert "bootstrap.repository" in db_story["depends_on"]
+
+
 def test_openclaw_bundle_manifest_reflects_capabilities(tmp_path):
     spec = _make_spec(capabilities=["scheduled-jobs", "i18n"])
     write_openclaw_bundle(tmp_path, spec)
@@ -191,3 +228,97 @@ def test_openclaw_bundle_manifest_reflects_capabilities(tmp_path):
     assert manifest["app_shape"] == "backoffice"
     assert manifest["primary_audience"] == "internal_teams"
     assert manifest["policies"]["follow_phase_order"] is True
+
+
+# -------------------------------------------------------
+# Commands.json — stack-aware (no longer empty)
+# -------------------------------------------------------
+
+
+def test_openclaw_commands_json_has_real_commands_for_node(tmp_path):
+    spec = _make_spec()
+    write_openclaw_bundle(tmp_path, spec)
+
+    commands = json.loads((tmp_path / ".openclaw" / "commands.json").read_text())
+
+    assert commands["commands"]["build"] == "npm run build"
+    assert commands["commands"]["lint"] == "npm run lint"
+    assert commands["commands"]["test"] == "npm test"
+    assert commands["commands"]["dev"] == "npm run dev"
+
+    # Not empty strings
+    for key, value in commands["commands"].items():
+        assert value != "", f"Command '{key}' should not be empty"
+
+
+def test_openclaw_commands_json_has_setup_commands(tmp_path):
+    spec = _make_spec()
+    write_openclaw_bundle(tmp_path, spec)
+
+    commands = json.loads((tmp_path / ".openclaw" / "commands.json").read_text())
+
+    assert "setup" in commands
+    assert commands["setup"]["install"] == "npm install"
+    assert "env" in commands["setup"]
+
+
+def test_openclaw_commands_json_includes_db_commands_for_postgres_docker(tmp_path):
+    spec = _make_spec()
+    write_openclaw_bundle(tmp_path, spec)
+
+    commands = json.loads((tmp_path / ".openclaw" / "commands.json").read_text())
+
+    assert "docker compose" in commands["commands"].get("db_start", "")
+
+
+def test_openclaw_commands_json_includes_jobs_for_scheduled_jobs_capability(tmp_path):
+    spec = _make_spec(capabilities=["scheduled-jobs"])
+    write_openclaw_bundle(tmp_path, spec)
+
+    commands = json.loads((tmp_path / ".openclaw" / "commands.json").read_text())
+
+    assert "jobs" in commands["commands"]
+    assert commands["commands"]["jobs"] != ""
+
+
+def test_openclaw_commands_json_payload_backend_has_payload_migrate(tmp_path):
+    spec = _make_spec(stack={
+        "frontend": "nextjs",
+        "backend": "payload",
+        "database": "postgres",
+    })
+    write_openclaw_bundle(tmp_path, spec)
+
+    commands = json.loads((tmp_path / ".openclaw" / "commands.json").read_text())
+
+    assert "payload" in commands["commands"].get("db_migrate", "").lower()
+
+
+def test_openclaw_commands_json_python_stack(tmp_path):
+    spec = _make_spec(stack={
+        "frontend": "",
+        "backend": "django",
+        "database": "postgres",
+    })
+    write_openclaw_bundle(tmp_path, spec)
+
+    commands = json.loads((tmp_path / ".openclaw" / "commands.json").read_text())
+
+    assert "pytest" in commands["commands"]["test"]
+    assert "ruff" in commands["commands"]["lint"]
+    assert "manage.py" in commands["commands"]["dev"]
+
+
+def test_openclaw_commands_json_go_stack(tmp_path):
+    spec = _make_spec(stack={
+        "frontend": "",
+        "backend": "gin",
+        "database": "postgres",
+    })
+    write_openclaw_bundle(tmp_path, spec)
+
+    commands = json.loads((tmp_path / ".openclaw" / "commands.json").read_text())
+
+    assert "go test" in commands["commands"]["test"]
+    assert "golangci-lint" in commands["commands"]["lint"]
+    assert "go build" in commands["commands"]["build"]

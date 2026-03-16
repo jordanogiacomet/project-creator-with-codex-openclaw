@@ -1,3 +1,9 @@
+"""Tests for the story engine.
+
+Updated to validate enriched story fields:
+acceptance_criteria, scope_boundaries, expected_files, depends_on, validation.
+"""
+
 from initializer.engine.story_engine import generate_stories
 
 
@@ -70,9 +76,10 @@ def test_generate_stories_upserts_existing_story_instead_of_duplicating():
     )
 
     assert "Implement authentication" in auth_story["title_alternatives"]
-    assert (
-        "Add login, logout and session management."
-        in auth_story["description_alternatives"]
+    # Description alternative uses new enriched text
+    assert any(
+        "login" in alt.lower() or "registration" in alt.lower()
+        for alt in auth_story.get("description_alternatives", [])
     )
 
 
@@ -96,3 +103,191 @@ def test_generate_stories_is_stable_on_rerun_for_canonical_output():
     assert len(first) == len(second)
     assert first_titles == second_titles
     assert len(second_titles) == len(set(second_titles))
+
+
+# -------------------------------------------------------------------
+# New enrichment fields
+# -------------------------------------------------------------------
+
+def test_every_story_has_acceptance_criteria():
+    spec = {
+        "stack": {
+            "frontend": "nextjs",
+            "backend": "payload",
+            "database": "postgres",
+        },
+        "features": ["authentication", "roles", "media-library"],
+        "stories": [],
+    }
+
+    stories = generate_stories(spec)
+
+    for story in stories:
+        ac = story.get("acceptance_criteria", [])
+        assert isinstance(ac, list), f"{story['id']} missing acceptance_criteria"
+        assert len(ac) > 0, f"{story['id']} has empty acceptance_criteria"
+
+
+def test_every_story_has_scope_boundaries():
+    spec = {
+        "stack": {
+            "frontend": "nextjs",
+            "backend": "payload",
+            "database": "postgres",
+        },
+        "features": ["authentication", "roles"],
+        "stories": [],
+    }
+
+    stories = generate_stories(spec)
+
+    for story in stories:
+        sb = story.get("scope_boundaries", [])
+        assert isinstance(sb, list), f"{story['id']} missing scope_boundaries"
+        assert len(sb) > 0, f"{story['id']} has empty scope_boundaries"
+
+
+def test_every_story_has_validation():
+    spec = {
+        "stack": {
+            "frontend": "nextjs",
+            "backend": "payload",
+            "database": "postgres",
+        },
+        "features": ["authentication"],
+        "stories": [],
+    }
+
+    stories = generate_stories(spec)
+
+    for story in stories:
+        val = story.get("validation", {})
+        assert isinstance(val, dict), f"{story['id']} missing validation"
+        assert "commands" in val, f"{story['id']} validation missing commands"
+
+
+def test_bootstrap_stories_have_correct_dependency_chain():
+    spec = {
+        "stack": {
+            "frontend": "nextjs",
+            "backend": "payload",
+            "database": "postgres",
+        },
+        "features": [],
+        "stories": [],
+    }
+
+    stories = generate_stories(spec)
+    by_key = {s.get("story_key"): s for s in stories}
+
+    repo = by_key.get("bootstrap.repository")
+    db = by_key.get("bootstrap.database")
+    backend = by_key.get("bootstrap.backend")
+    frontend = by_key.get("bootstrap.frontend")
+
+    assert repo is not None
+    assert db is not None
+    assert backend is not None
+    assert frontend is not None
+
+    assert repo["depends_on"] == []
+    assert "bootstrap.repository" in db["depends_on"]
+    assert "bootstrap.database" in backend["depends_on"]
+    assert "bootstrap.backend" in frontend["depends_on"]
+
+
+def test_feature_stories_depend_on_bootstrap():
+    spec = {
+        "stack": {
+            "frontend": "nextjs",
+            "backend": "payload",
+            "database": "postgres",
+        },
+        "features": ["authentication", "roles"],
+        "stories": [],
+    }
+
+    stories = generate_stories(spec)
+    by_key = {s.get("story_key"): s for s in stories}
+
+    auth = by_key.get("feature.authentication")
+    roles = by_key.get("feature.roles")
+
+    assert auth is not None
+    assert "bootstrap.backend" in auth["depends_on"]
+    assert "bootstrap.frontend" in auth["depends_on"]
+
+    assert roles is not None
+    assert "feature.authentication" in roles["depends_on"]
+
+
+def test_expected_files_use_payload_paths_for_payload_backend():
+    spec = {
+        "stack": {
+            "frontend": "nextjs",
+            "backend": "payload",
+            "database": "postgres",
+        },
+        "features": ["authentication"],
+        "stories": [],
+    }
+
+    stories = generate_stories(spec)
+    by_key = {s.get("story_key"): s for s in stories}
+
+    auth = by_key.get("feature.authentication")
+    assert auth is not None
+
+    files = auth.get("expected_files", [])
+    assert any("collections/Users" in f for f in files), f"Expected Payload collection path, got {files}"
+
+
+def test_expected_files_use_api_paths_for_node_api_backend():
+    spec = {
+        "stack": {
+            "frontend": "nextjs",
+            "backend": "node-api",
+            "database": "postgres",
+        },
+        "features": ["authentication"],
+        "stories": [],
+    }
+
+    stories = generate_stories(spec)
+    by_key = {s.get("story_key"): s for s in stories}
+
+    auth = by_key.get("feature.authentication")
+    assert auth is not None
+
+    files = auth.get("expected_files", [])
+    assert any("api/auth" in f for f in files), f"Expected API path, got {files}"
+
+
+def test_merge_preserves_enrichment_fields():
+    """When upserting into an existing story that already has acceptance_criteria,
+    the existing criteria should be preserved."""
+    spec = {
+        "stack": {
+            "frontend": "nextjs",
+            "backend": "payload",
+            "database": "postgres",
+        },
+        "features": ["authentication"],
+        "stories": [
+            {
+                "id": "ST-001",
+                "story_key": "feature.authentication",
+                "title": "Custom auth",
+                "description": "Custom desc.",
+                "acceptance_criteria": ["Custom criterion"],
+                "depends_on": ["custom.dep"],
+            }
+        ],
+    }
+
+    stories = generate_stories(spec)
+    auth = next(s for s in stories if s.get("story_key") == "feature.authentication")
+
+    # Existing enrichment fields should be preserved
+    assert auth["acceptance_criteria"] == ["Custom criterion"]
+    assert auth["depends_on"] == ["custom.dep"]

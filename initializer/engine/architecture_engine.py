@@ -3,19 +3,29 @@
 Generates system architecture based on stack, features, capabilities,
 and structured discovery signals.
 
+Generates:
+- components: system components with technology and role
+- decisions: architectural decisions
+- communication: contracts between components (protocol, pattern, auth)
+- boundaries: responsibility split between frontend, backend, shared
+
 Key change: public-site related decisions (CDN, SSR/ISR, public traffic
 caching) are only generated when public-site is actually in capabilities.
-The old pattern `"public-site" in capabilities and needs_public_site is not False`
-allowed leakage when public-site survived without confirmation.  Now the
-capabilities list is the single source of truth — if capability_derivation
-and discovery_merge did their job, public-site won't be in capabilities
-unless it was justified.
 """
 
 
 GENERIC_COMPONENT_TECHNOLOGIES = {
     "background-worker",
 }
+
+# -------------------------------------------------------------------
+# Node ecosystem detection (for deriving communication patterns)
+# -------------------------------------------------------------------
+
+_PAYLOAD_BACKENDS = {"payload", "payload-cms"}
+_DJANGO_BACKENDS = {"django"}
+_FASTAPI_BACKENDS = {"fastapi", "flask", "litestar"}
+_GO_BACKENDS = {"go", "golang", "gin", "echo", "fiber"}
 
 
 def _unique(values):
@@ -90,12 +100,168 @@ def _core_features(signals):
 
 
 def _has_public_site(capabilities):
-    """Check if public-site is in the reconciled capabilities list.
-    This is the single source of truth — it means capability_derivation
-    and discovery_merge have already validated whether public-site
-    should be present."""
     return "public-site" in capabilities
 
+
+# -------------------------------------------------------------------
+# Communication contracts
+# -------------------------------------------------------------------
+
+def _generate_communication(stack, features, capabilities, component_names):
+    """Generate communication contracts between components."""
+    frontend = (stack.get("frontend") or "").lower().strip()
+    backend = (stack.get("backend") or "").lower().strip()
+    database = (stack.get("database") or "").lower().strip()
+
+    contracts = []
+
+    def add(source, target, protocol, pattern, auth=None):
+        if source not in component_names or target not in component_names:
+            return
+        entry = {
+            "from": source,
+            "to": target,
+            "protocol": protocol,
+            "pattern": pattern,
+        }
+        if auth:
+            entry["auth"] = auth
+        contracts.append(entry)
+
+    # --- Frontend → API ---
+    if "frontend" in component_names and "api" in component_names:
+        if backend in _PAYLOAD_BACKENDS:
+            add("frontend", "api", "http",
+                "REST via Payload auto-generated API + custom endpoints",
+                "JWT bearer token or session cookie (Payload built-in)")
+        elif backend in _DJANGO_BACKENDS:
+            add("frontend", "api", "http",
+                "Django REST Framework or Django views",
+                "Session cookie or token authentication")
+        elif backend in _FASTAPI_BACKENDS:
+            add("frontend", "api", "http",
+                f"REST API via {backend}",
+                "JWT bearer token in Authorization header")
+        elif backend in _GO_BACKENDS:
+            add("frontend", "api", "http",
+                f"REST API via {backend} HTTP handlers",
+                "JWT bearer token in Authorization header")
+        else:
+            add("frontend", "api", "http",
+                "REST API",
+                "JWT bearer token or session cookie")
+
+    # --- API → Database ---
+    if "api" in component_names and "database" in component_names:
+        if backend in _PAYLOAD_BACKENDS:
+            orm = "Drizzle ORM (Payload built-in)"
+        elif backend in _DJANGO_BACKENDS:
+            orm = "Django ORM"
+        elif backend in _FASTAPI_BACKENDS:
+            orm = "SQLAlchemy or equivalent"
+        elif backend in _GO_BACKENDS:
+            orm = "sqlx, GORM, or raw SQL"
+        else:
+            orm = "ORM or query builder"
+
+        add("api", "database", "tcp",
+            f"{orm} over {database} connection pool")
+
+    # --- API → Object Storage ---
+    if "api" in component_names and "object-storage" in component_names:
+        add("api", "object-storage", "http",
+            "S3-compatible API for media upload and retrieval",
+            "Access key / IAM role")
+
+    # --- Worker → Database ---
+    if "worker" in component_names and "database" in component_names:
+        add("worker", "database", "tcp",
+            f"Direct {database} connection for job execution")
+
+    # --- Worker → API (if jobs need to trigger API actions) ---
+    # Only add if both exist and there are features that imply worker→api
+    if "worker" in component_names and "api" in component_names:
+        if "notifications" in features:
+            add("worker", "api", "http",
+                "Internal HTTP call for notification delivery or webhook triggers")
+
+    # --- CDN → Frontend ---
+    if "cdn" in component_names and "frontend" in component_names:
+        add("cdn", "frontend", "http",
+            "Edge cache proxying static assets and SSR/ISR responses")
+
+    return contracts
+
+
+# -------------------------------------------------------------------
+# Boundaries
+# -------------------------------------------------------------------
+
+def _generate_boundaries(stack, features, capabilities):
+    """Generate responsibility boundaries between layers."""
+    backend = (stack.get("backend") or "").lower().strip()
+    frontend = (stack.get("frontend") or "").lower().strip()
+
+    frontend_resp = [
+        "Rendering pages and UI components",
+        "Client-side routing and navigation",
+        "Form validation (client-side)",
+        "Client-side state management",
+    ]
+
+    backend_resp = [
+        "Business logic and domain rules",
+        "Authentication and session management",
+        "Authorization and permission enforcement",
+        "Data persistence and queries",
+        "Input validation (server-side, authoritative)",
+    ]
+
+    shared = []
+
+    if backend in _PAYLOAD_BACKENDS:
+        backend_resp.append("Content model definition via Payload collections")
+        backend_resp.append("Media upload handling and storage")
+        shared.append("TypeScript types auto-generated by Payload")
+    elif backend in _DJANGO_BACKENDS:
+        backend_resp.append("Template rendering (if using Django templates)")
+        backend_resp.append("Database migrations via Django ORM")
+        shared.append("API contract defined by serializers / OpenAPI schema")
+    elif backend in _FASTAPI_BACKENDS:
+        backend_resp.append("Request/response validation via Pydantic schemas")
+        backend_resp.append("Database migrations via Alembic")
+        shared.append("API contract defined by Pydantic models / OpenAPI schema")
+    elif backend in _GO_BACKENDS:
+        backend_resp.append("Request/response structs and validation")
+        backend_resp.append("Database migrations via migration tool")
+        shared.append("API contract defined by struct types or OpenAPI spec")
+    else:
+        shared.append("Shared types or API contract between frontend and backend")
+
+    if "media-library" in features:
+        backend_resp.append("Media asset management and storage orchestration")
+
+    if "scheduled-jobs" in capabilities:
+        backend_resp.append("Background job scheduling and execution")
+
+    if "public-site" in capabilities:
+        frontend_resp.append("Public page rendering (SSR/ISR) for SEO")
+        frontend_resp.append("CDN-compatible caching headers")
+
+    if "i18n" in capabilities:
+        frontend_resp.append("Locale-aware rendering and text formatting")
+        backend_resp.append("Locale-aware data storage and API responses")
+
+    return {
+        "frontend": frontend_resp,
+        "backend": backend_resp,
+        "shared": shared,
+    }
+
+
+# -------------------------------------------------------------------
+# Main generator
+# -------------------------------------------------------------------
 
 def generate_architecture(spec):
     stack = spec.get("stack", {})
@@ -189,7 +355,6 @@ def generate_architecture(spec):
     if "roles" in features:
         add_decision("Authorization must enforce role and permission boundaries.")
 
-    # Public-site decisions ONLY when public-site is in reconciled capabilities
     if has_public:
         add_decision("Public-facing pages should use caching and delivery strategies appropriate for anonymous traffic.")
         add_decision("SEO-sensitive public pages should use rendering strategies such as SSR or ISR when beneficial.")
@@ -235,8 +400,21 @@ def generate_architecture(spec):
     else:
         add_decision("Introduce caching for frequently accessed application data where beneficial.")
 
+    # --- Assemble final architecture ---
+
     architecture["style"] = existing_architecture.get("style", "service-oriented")
     architecture["components"] = components
     architecture["decisions"] = decisions
+
+    # Communication contracts (C-ARCH-01)
+    component_names = {c.get("name") for c in components if c.get("name")}
+    architecture["communication"] = existing_architecture.get("communication") or _generate_communication(
+        stack, features, capabilities, component_names,
+    )
+
+    # Boundaries (C-ARCH-01)
+    architecture["boundaries"] = existing_architecture.get("boundaries") or _generate_boundaries(
+        stack, features, capabilities,
+    )
 
     return architecture

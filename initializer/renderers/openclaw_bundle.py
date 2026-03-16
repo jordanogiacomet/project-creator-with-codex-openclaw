@@ -10,7 +10,7 @@ The bundle includes:
 - OPENCLAW.md — handoff document for OpenClaw-specific loops
 - manifest.json — machine-readable project metadata
 - repo-contract.json — contract rules for the generated package
-- commands.json — validation commands (to be filled by the executor)
+- commands.json — validation commands derived from the project stack
 - execution-plan.json — ordered story list with phases and dependencies
 """
 
@@ -30,6 +30,10 @@ def _get_decision_signals(spec: dict[str, Any]) -> dict[str, Any]:
         return {}
     return signals
 
+
+# -------------------------------------------------------------------
+# Execution plan
+# -------------------------------------------------------------------
 
 def _build_execution_plan(spec: dict[str, Any]) -> dict[str, Any]:
     """Build an ordered execution plan from stories.
@@ -69,6 +73,10 @@ def _build_execution_plan(spec: dict[str, Any]) -> dict[str, Any]:
         if story_key:
             entry["story_key"] = story_key
 
+        depends_on = story.get("depends_on")
+        if isinstance(depends_on, list) and depends_on:
+            entry["depends_on"] = depends_on
+
         if story_key.startswith("bootstrap."):
             phases["bootstrap"].append(entry)
         elif story_key.startswith("feature."):
@@ -77,7 +85,6 @@ def _build_execution_plan(spec: dict[str, Any]) -> dict[str, Any]:
             if "automation" in story_key or "scheduled" in story_key:
                 phases["automation"].append(entry)
             else:
-                # Separate domain features from product shell
                 if any(
                     kw in story_key
                     for kw in (
@@ -91,8 +98,6 @@ def _build_execution_plan(spec: dict[str, Any]) -> dict[str, Any]:
         elif story_id in ("ST-900", "ST-901") or "monitoring" in title.lower() or "backup" in title.lower():
             phases["operations"].append(entry)
         else:
-            # Stories from capability handlers (i18n, cms, scheduled-jobs, public-site)
-            # that don't have a story_key prefix
             lower_title = title.lower()
             if any(kw in lower_title for kw in ("locale", "i18n", "translation")):
                 phases["features"].append(entry)
@@ -105,7 +110,6 @@ def _build_execution_plan(spec: dict[str, Any]) -> dict[str, Any]:
             else:
                 phases["features"].append(entry)
 
-    # Build ordered list
     ordered: list[dict[str, Any]] = []
     order = 1
 
@@ -132,6 +136,235 @@ def _build_execution_plan(spec: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# -------------------------------------------------------------------
+# Commands — derived from the project stack
+# -------------------------------------------------------------------
+
+# Node.js ecosystem stacks
+_NODE_FRONTENDS = {"nextjs", "next.js", "next", "react", "vue", "nuxt", "svelte", "sveltekit", "astro", "remix"}
+_NODE_BACKENDS = {"payload", "payload-cms", "node-api", "express", "fastify", "hono", "nestjs", "adonis", "strapi"}
+
+# Python ecosystem stacks
+_PYTHON_BACKENDS = {"django", "flask", "fastapi", "litestar"}
+
+# Go ecosystem stacks
+_GO_BACKENDS = {"go", "golang", "gin", "echo", "fiber"}
+
+
+def _detect_ecosystem(stack: dict[str, Any]) -> str:
+    """Detect the primary ecosystem from the stack dict.
+
+    Returns one of: 'node', 'python', 'go', 'unknown'.
+    """
+    frontend = (stack.get("frontend") or "").lower().strip()
+    backend = (stack.get("backend") or "").lower().strip()
+
+    if backend in _PYTHON_BACKENDS or frontend in ("django",):
+        return "python"
+
+    if backend in _GO_BACKENDS:
+        return "go"
+
+    if frontend in _NODE_FRONTENDS or backend in _NODE_BACKENDS:
+        return "node"
+
+    # Fallback: if there's any frontend listed, assume node
+    if frontend:
+        return "node"
+
+    return "unknown"
+
+
+def _node_commands(stack: dict[str, Any], capabilities: list[str], deploy_target: str) -> dict[str, Any]:
+    """Generate commands for a Node.js ecosystem project."""
+    database = (stack.get("database") or "").lower().strip()
+    backend = (stack.get("backend") or "").lower().strip()
+    is_payload = backend in ("payload", "payload-cms")
+
+    commands: dict[str, str] = {
+        "dev": "npm run dev",
+        "build": "npm run build",
+        "lint": "npm run lint",
+        "test": "npm test",
+        "typecheck": "npx tsc --noEmit",
+    }
+
+    setup: dict[str, str] = {
+        "install": "npm install",
+        "env": "cp .env.example .env.local",
+    }
+
+    if database == "postgres" and deploy_target in ("docker", "docker_and_k8s_later"):
+        commands["db_start"] = "docker compose up -d postgres"
+        commands["db_stop"] = "docker compose down"
+        setup["db_start"] = "docker compose up -d postgres"
+    elif database == "postgres":
+        setup["db_start"] = "# Start PostgreSQL manually or via your cloud provider"
+    elif database in ("mysql", "mariadb") and deploy_target in ("docker", "docker_and_k8s_later"):
+        commands["db_start"] = f"docker compose up -d {database}"
+        commands["db_stop"] = "docker compose down"
+        setup["db_start"] = f"docker compose up -d {database}"
+    elif database == "mongodb" and deploy_target in ("docker", "docker_and_k8s_later"):
+        commands["db_start"] = "docker compose up -d mongo"
+        commands["db_stop"] = "docker compose down"
+        setup["db_start"] = "docker compose up -d mongo"
+    elif database == "sqlite":
+        # No separate service needed
+        pass
+    elif database:
+        setup["db_start"] = f"# Start {database} manually"
+
+    if is_payload:
+        commands["db_migrate"] = "npx payload migrate"
+        commands["db_seed"] = "npx payload seed"
+        setup["db_migrate"] = "npx payload migrate"
+    elif database:
+        commands["db_migrate"] = "npm run db:migrate"
+        setup["db_migrate"] = "npm run db:migrate"
+
+    if "scheduled-jobs" in capabilities:
+        commands["jobs"] = "npm run jobs"
+
+    return {"commands": commands, "setup": setup}
+
+
+def _python_commands(stack: dict[str, Any], capabilities: list[str], deploy_target: str) -> dict[str, Any]:
+    """Generate commands for a Python ecosystem project."""
+    database = (stack.get("database") or "").lower().strip()
+    backend = (stack.get("backend") or "").lower().strip()
+
+    commands: dict[str, str] = {
+        "dev": "python manage.py runserver" if backend == "django" else "uvicorn app.main:app --reload",
+        "build": "python -m py_compile app/" if backend != "django" else "python manage.py check --deploy",
+        "lint": "ruff check .",
+        "test": "pytest",
+        "typecheck": "mypy .",
+    }
+
+    setup: dict[str, str] = {
+        "install": "pip install -r requirements.txt",
+        "env": "cp .env.example .env",
+    }
+
+    if database == "postgres" and deploy_target in ("docker", "docker_and_k8s_later"):
+        commands["db_start"] = "docker compose up -d postgres"
+        commands["db_stop"] = "docker compose down"
+        setup["db_start"] = "docker compose up -d postgres"
+    elif database and database != "sqlite":
+        setup["db_start"] = f"# Start {database} manually"
+
+    if backend == "django":
+        commands["db_migrate"] = "python manage.py migrate"
+        setup["db_migrate"] = "python manage.py migrate"
+    elif database and database != "sqlite":
+        commands["db_migrate"] = "alembic upgrade head"
+        setup["db_migrate"] = "alembic upgrade head"
+
+    if "scheduled-jobs" in capabilities:
+        if backend == "django":
+            commands["jobs"] = "python manage.py run_jobs"
+        else:
+            commands["jobs"] = "python -m app.jobs"
+
+    return {"commands": commands, "setup": setup}
+
+
+def _go_commands(stack: dict[str, Any], capabilities: list[str], deploy_target: str) -> dict[str, Any]:
+    """Generate commands for a Go ecosystem project."""
+    database = (stack.get("database") or "").lower().strip()
+
+    commands: dict[str, str] = {
+        "dev": "go run ./cmd/server",
+        "build": "go build ./...",
+        "lint": "golangci-lint run",
+        "test": "go test ./...",
+        "typecheck": "go vet ./...",
+    }
+
+    setup: dict[str, str] = {
+        "install": "go mod download",
+        "env": "cp .env.example .env",
+    }
+
+    if database == "postgres" and deploy_target in ("docker", "docker_and_k8s_later"):
+        commands["db_start"] = "docker compose up -d postgres"
+        commands["db_stop"] = "docker compose down"
+        setup["db_start"] = "docker compose up -d postgres"
+    elif database and database != "sqlite":
+        setup["db_start"] = f"# Start {database} manually"
+
+    if database and database != "sqlite":
+        commands["db_migrate"] = "go run ./cmd/migrate up"
+        setup["db_migrate"] = "go run ./cmd/migrate up"
+
+    if "scheduled-jobs" in capabilities:
+        commands["jobs"] = "go run ./cmd/worker"
+
+    return {"commands": commands, "setup": setup}
+
+
+def _fallback_commands() -> dict[str, Any]:
+    """Generate placeholder commands when the ecosystem is unknown."""
+    return {
+        "commands": {
+            "dev": "# Configure dev command for your stack",
+            "build": "# Configure build command for your stack",
+            "lint": "# Configure lint command for your stack",
+            "test": "# Configure test command for your stack",
+        },
+        "setup": {
+            "install": "# Configure install command for your stack",
+            "env": "cp .env.example .env",
+        },
+    }
+
+
+def generate_commands(spec: dict[str, Any]) -> dict[str, Any]:
+    """Generate commands dict from the project spec.
+
+    Returns a dict with:
+    - commands: validation and dev commands the executor should use
+    - setup: one-time setup commands to bootstrap the project
+    - notes: guidance for the executor
+    """
+    stack = spec.get("stack", {})
+    answers = spec.get("answers", {})
+    capabilities = spec.get("capabilities", [])
+    deploy_target = answers.get("deploy_target", "docker")
+
+    ecosystem = _detect_ecosystem(stack)
+
+    if ecosystem == "node":
+        result = _node_commands(stack, capabilities, deploy_target)
+    elif ecosystem == "python":
+        result = _python_commands(stack, capabilities, deploy_target)
+    elif ecosystem == "go":
+        result = _go_commands(stack, capabilities, deploy_target)
+    else:
+        result = _fallback_commands()
+
+    notes: list[str] = [
+        "These commands are pre-populated from the project stack. "
+        "Update them if the actual project setup differs.",
+        "Run 'build' and 'lint' after every story. "
+        "Run 'test' when test files exist.",
+        "Run 'typecheck' periodically to catch type errors early.",
+    ]
+
+    if "scheduled-jobs" in capabilities:
+        notes.append(
+            "The 'jobs' command starts the background job runner. "
+            "Configure it after implementing the automation story."
+        )
+
+    result["notes"] = notes
+    return result
+
+
+# -------------------------------------------------------------------
+# AGENTS.md
+# -------------------------------------------------------------------
+
 def _build_agents_md(spec: dict[str, Any]) -> str:
     """Build a project-specific AGENTS.md."""
     answers = spec.get("answers", {})
@@ -153,6 +386,14 @@ def _build_agents_md(spec: dict[str, Any]) -> str:
     feat_text = ", ".join(features) if features else "none"
     cwf_text = ", ".join(core_work_features) if core_work_features else "none specified"
 
+    # Build the stack line dynamically
+    stack_parts = []
+    for key in ("frontend", "backend", "database"):
+        val = stack.get(key)
+        if val:
+            stack_parts.append(val)
+    stack_text = " + ".join(stack_parts) if stack_parts else "unknown"
+
     return f"""# AGENTS.md
 
 You are an execution agent working on **{project_name}**.
@@ -164,7 +405,7 @@ You are an execution agent working on **{project_name}**.
 - **App shape**: {app_shape}
 - **Primary audience**: {primary_audience}
 - **Surface**: {surface}
-- **Stack**: {stack.get("frontend", "?")} + {stack.get("backend", "?")} + {stack.get("database", "?")}
+- **Stack**: {stack_text}
 - **Capabilities**: {cap_text}
 - **Features**: {feat_text}
 - **Core work features**: {cwf_text}
@@ -229,6 +470,10 @@ A story is complete when:
 """
 
 
+# -------------------------------------------------------------------
+# OPENCLAW.md
+# -------------------------------------------------------------------
+
 def _build_openclaw_md(spec: dict[str, Any]) -> str:
     """Build a project-specific OPENCLAW.md."""
     answers = spec.get("answers", {})
@@ -270,6 +515,10 @@ All planning is done — the agent's job is to implement.
 - Follow the phase order: bootstrap → features → product → domain → automation → operations
 """
 
+
+# -------------------------------------------------------------------
+# Bundle writer
+# -------------------------------------------------------------------
 
 def write_openclaw_bundle(output_dir: Path, spec: dict[str, Any]) -> None:
     """Generate the .openclaw/ bundle with project-specific context."""
@@ -353,19 +602,7 @@ def write_openclaw_bundle(output_dir: Path, spec: dict[str, Any]) -> None:
     )
 
     # --- commands.json ---
-    commands = {
-        "commands": {
-            "test": "",
-            "lint": "",
-            "build": "",
-            "dev": "",
-        },
-        "notes": [
-            "Commands are empty until the executor sets up the project.",
-            "After bootstrap phase, update this file with actual commands.",
-            "The executor should run `test` after each story when available.",
-        ],
-    }
+    commands = generate_commands(spec)
     (openclaw_dir / "commands.json").write_text(
         json.dumps(commands, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",

@@ -15,6 +15,8 @@ from initializer.engine.architeture_diagram_engine import (
     generate_architecture_diagram,
 )
 from initializer.engine.story_engine import generate_stories
+from initializer.engine.project_structure_engine import generate_project_structure
+from initializer.engine.domain_model_engine import generate_domain_model
 
 from initializer.ai.refine_engine import refine_spec
 from initializer.ai.discovery_engine import run_assisted_discovery
@@ -113,13 +115,135 @@ Database: {spec['stack']['database']}
 
 
 def write_architecture(path, spec):
+    """Write enriched architecture.md with components, communication, boundaries, and decisions."""
     arch = spec["architecture"]
-    content = "# Architecture\n\n"
+    stack = spec.get("stack", {})
+    features = spec.get("features", [])
 
-    for component in arch["components"]:
-        content += f"### {component['name']}\n"
-        content += f"Technology: {component['technology']}\n"
-        content += f"Role: {component['role']}\n\n"
+    lines = ["# Architecture", ""]
+
+    # --- Style ---
+    style = arch.get("style", "service-oriented")
+    lines.append(f"**Style:** {style}")
+    lines.append("")
+
+    # --- Components ---
+    lines.append("## Components")
+    lines.append("")
+
+    for component in arch.get("components", []):
+        name = component.get("name", "unknown")
+        tech = component.get("technology", "unknown")
+        role = component.get("role", "")
+        lines.append(f"### {name}")
+        lines.append(f"- **Technology:** {tech}")
+        lines.append(f"- **Role:** {role}")
+        lines.append("")
+
+    # --- Communication Contracts ---
+    communication = arch.get("communication", [])
+    if communication:
+        lines.append("## Communication")
+        lines.append("")
+
+        for contract in communication:
+            source = contract.get("from", "?")
+            target = contract.get("to", "?")
+            protocol = contract.get("protocol", "?")
+            pattern = contract.get("pattern", "")
+            auth = contract.get("auth")
+
+            lines.append(f"### {source} → {target}")
+            lines.append(f"- **Protocol:** {protocol}")
+            lines.append(f"- **Pattern:** {pattern}")
+            if auth:
+                lines.append(f"- **Auth:** {auth}")
+            lines.append("")
+
+    # --- Boundaries ---
+    boundaries = arch.get("boundaries", {})
+    if boundaries:
+        lines.append("## Responsibility Boundaries")
+        lines.append("")
+
+        frontend_resp = boundaries.get("frontend", [])
+        backend_resp = boundaries.get("backend", [])
+        shared = boundaries.get("shared", [])
+
+        if frontend_resp:
+            lines.append("### Frontend")
+            for r in frontend_resp:
+                lines.append(f"- {r}")
+            lines.append("")
+
+        if backend_resp:
+            lines.append("### Backend")
+            for r in backend_resp:
+                lines.append(f"- {r}")
+            lines.append("")
+
+        if shared:
+            lines.append("### Shared")
+            for s in shared:
+                lines.append(f"- {s}")
+            lines.append("")
+
+    # --- Typical Request Flow ---
+    component_names = {c.get("name") for c in arch.get("components", []) if c.get("name")}
+    backend_name = stack.get("backend", "api")
+    database_name = stack.get("database", "database")
+
+    has_frontend = "frontend" in component_names
+    has_api = "api" in component_names
+    has_db = "database" in component_names
+
+    if has_frontend and has_api and has_db:
+        lines.append("## Typical Request Flow")
+        lines.append("")
+
+        if "authentication" in features:
+            lines.append("### Authenticated action (e.g., create or update a record)")
+            lines.append("")
+            lines.append(f"1. User interacts with the frontend ({stack.get('frontend', 'frontend')})")
+            lines.append(f"2. Frontend sends HTTP request to the API ({backend_name}) with auth token/session")
+            lines.append("3. API middleware validates authentication and authorization")
+            lines.append("4. API executes business logic and validates input")
+            lines.append(f"5. API persists data to {database_name} via ORM/query layer")
+            lines.append("6. API returns response to frontend")
+            lines.append("7. Frontend updates UI based on response")
+            lines.append("")
+        else:
+            lines.append("### Standard request")
+            lines.append("")
+            lines.append(f"1. User interacts with the frontend ({stack.get('frontend', 'frontend')})")
+            lines.append(f"2. Frontend sends HTTP request to the API ({backend_name})")
+            lines.append("3. API executes business logic and validates input")
+            lines.append(f"4. API persists data to {database_name}")
+            lines.append("5. API returns response to frontend")
+            lines.append("6. Frontend updates UI based on response")
+            lines.append("")
+
+    if "worker" in component_names:
+        lines.append("### Background job execution")
+        lines.append("")
+        lines.append("1. Scheduler triggers job at configured interval")
+        lines.append(f"2. Worker queries {database_name} for pending work")
+        lines.append("3. Worker processes each item (publish, notify, remind, etc.)")
+        lines.append(f"4. Worker updates {database_name} with results")
+        lines.append("5. Worker logs outcome for observability")
+        lines.append("")
+
+    # --- Decisions ---
+    decisions = arch.get("decisions", [])
+    if decisions:
+        lines.append("## Architectural Decisions")
+        lines.append("")
+
+        for decision in decisions:
+            lines.append(f"- {decision}")
+        lines.append("")
+
+    content = "\n".join(lines)
 
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)
@@ -234,24 +358,96 @@ def write_progress(path):
 
 
 def write_stories(path, spec):
+    """Write enriched story files to docs/stories/."""
     stories_dir = path / "docs" / "stories"
     stories_dir.mkdir(parents=True, exist_ok=True)
 
     for story in spec["stories"]:
-        file = stories_dir / f"{story['id']}.md"
-        content = f"""
-# {story['id']} — {story['title']}
+        if not isinstance(story, dict):
+            continue
 
-## Description
+        story_id = story.get("id")
+        if not story_id:
+            continue
 
-{story['description']}
-"""
+        file = stories_dir / f"{story_id}.md"
+
+        lines = []
+
+        title = story.get("title", "Untitled")
+        description = story.get("description", "")
+        acceptance_criteria = story.get("acceptance_criteria", [])
+        scope_boundaries = story.get("scope_boundaries", [])
+        expected_files = story.get("expected_files", [])
+        depends_on = story.get("depends_on", [])
+        validation = story.get("validation", {})
+        story_key = story.get("story_key", "")
+
+        lines.append(f"# {story_id} — {title}")
+        lines.append("")
+
+        if story_key:
+            lines.append(f"**Story key:** `{story_key}`")
+            lines.append("")
+
+        lines.append("## Description")
+        lines.append("")
+        lines.append(description)
+        lines.append("")
+
+        if acceptance_criteria:
+            lines.append("## Acceptance Criteria")
+            lines.append("")
+            for criterion in acceptance_criteria:
+                lines.append(f"- [ ] {criterion}")
+            lines.append("")
+
+        if scope_boundaries:
+            lines.append("## Scope Boundaries")
+            lines.append("")
+            for boundary in scope_boundaries:
+                lines.append(f"- {boundary}")
+            lines.append("")
+
+        if expected_files:
+            lines.append("## Expected Files")
+            lines.append("")
+            for filepath in expected_files:
+                lines.append(f"- `{filepath}`")
+            lines.append("")
+
+        if depends_on:
+            lines.append("## Dependencies")
+            lines.append("")
+            for dep in depends_on:
+                lines.append(f"- `{dep}`")
+            lines.append("")
+
+        if validation:
+            commands = validation.get("commands", [])
+            manual_check = validation.get("manual_check")
+
+            if commands or manual_check:
+                lines.append("## Validation")
+                lines.append("")
+
+                if commands:
+                    for cmd in commands:
+                        lines.append(f"- Run: `{cmd}`")
+
+                if manual_check:
+                    lines.append(f"- Manual: {manual_check}")
+
+                lines.append("")
+
+        content = "\n".join(lines).rstrip() + "\n"
+
         with open(file, "w", encoding="utf-8") as f:
             f.write(content)
 
 
 def write_downstream_artifacts(path, spec):
-    # Renderers already create a docs/ subdirectory internally
+    """Write downstream docs: constraints, design system, risks, diagram."""
     write_constraints(path, spec["constraints"])
     write_design_system(path, spec["design_system"])
     write_risks(path, spec["risks"])
@@ -398,6 +594,8 @@ def derive_downstream_artifacts(spec):
     spec["design_system"] = generate_design_system(spec)
     spec["risks"] = analyze_risks(spec)
     spec["diagram"] = generate_architecture_diagram(spec)
+    spec["project_structure"] = generate_project_structure(spec)
+    spec["domain_model"] = generate_domain_model(spec)
     return spec
 
 

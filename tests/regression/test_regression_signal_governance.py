@@ -13,6 +13,18 @@ from initializer.engine.risk_engine import analyze_risks
 from initializer.engine.constraint_engine import generate_constraints
 
 
+def _component_names(design_system):
+    """Extract component names from a design system, handling both
+    string components (legacy) and dict components (current)."""
+    names = []
+    for comp in design_system.get("components", []):
+        if isinstance(comp, dict):
+            names.append(comp.get("name", ""))
+        else:
+            names.append(comp)
+    return names
+
+
 def test_regression_internal_backoffice_no_public_site_leak():
     """Internal backoffice with confirmed needs_public_site=False
     should never have public-site in capabilities or CDN/SSR in architecture."""
@@ -117,11 +129,12 @@ def test_regression_design_system_no_heroblock_without_public_site():
     }
 
     design_system = generate_design_system(spec)
+    names = _component_names(design_system)
 
-    assert "HeroBlock" not in design_system["components"]
-    assert "Footer" not in design_system["components"]
-    assert "DataTable" in design_system["components"]
-    assert "StatusBadge" in design_system["components"]
+    assert "HeroBlock" not in names
+    assert "Footer" not in names
+    assert "DataTable" in names
+    assert "StatusBadge" in names
 
 
 def test_regression_risks_no_traffic_spikes_without_public_site():
