@@ -491,7 +491,46 @@ def _write_design_system_md(project_dir: Path, design_system: dict[str, Any]) ->
 # Main command
 # -------------------------------------------------------------------
 
-def run_design(project_path: str) -> int:
+def _analyze_reference(design_system: dict[str, Any], reference_path: str) -> None:
+    """Analyze design reference images and merge into design system."""
+    from initializer.engine.design_reference_engine import (
+        analyze_design_references,
+        merge_reference_into_design_system,
+    )
+
+    print(f"\n  🖼️  Analyzing design references from: {reference_path}")
+    try:
+        extraction = analyze_design_references(reference_path)
+        if extraction:
+            merge_reference_into_design_system(design_system, extraction)
+            style = extraction.get("overall_style", "")
+            if style:
+                print(f"  Style: {style}")
+            print("  ✅ Reference tokens merged into design system.")
+
+            # Show what was extracted
+            colors = extraction.get("colors", {})
+            if colors:
+                print(f"\n  Extracted {len(colors)} colors:")
+                for k, v in list(colors.items())[:6]:
+                    print(f"    {k:20s} → {v}")
+                if len(colors) > 6:
+                    print(f"    ... and {len(colors) - 6} more")
+
+            components = extraction.get("components", [])
+            if components:
+                print(f"\n  Detected components: {', '.join(components[:8])}")
+                if len(components) > 8:
+                    print(f"    ... and {len(components) - 8} more")
+
+            print()
+        else:
+            print("  ⚠️  No tokens extracted.\n")
+    except Exception as exc:
+        print(f"  ⚠️  Analysis failed: {exc}\n")
+
+
+def run_design(project_path: str, reference: str | None = None) -> int:
     """Interactive design system editor."""
     try:
         project_dir, spec = _load_spec(project_path)
@@ -507,6 +546,10 @@ def run_design(project_path: str) -> int:
     print(f"  🎨 Design System Editor — {project_name}")
     print(f"{'=' * 60}")
 
+    # Auto-analyze reference if provided
+    if reference:
+        _analyze_reference(design_system, reference)
+
     while True:
         print("\n  What do you want to do?")
         print("     1. View full design system")
@@ -518,7 +561,8 @@ def run_design(project_path: str) -> int:
         print("     7. Add component")
         print("     8. Remove component")
         print("     9. Edit design philosophy")
-        print("    10. Save and exit")
+        print("    10. Analyze design reference images")
+        print("    11. Save and exit")
         print("     0. Exit without saving")
 
         choice = input("\n  > ").strip()
@@ -551,6 +595,13 @@ def run_design(project_path: str) -> int:
             _edit_philosophy(design_system)
 
         elif choice == "10":
+            ref_path = input("  Path to reference images directory: ").strip()
+            if ref_path:
+                _analyze_reference(design_system, ref_path)
+            else:
+                print("  Cancelled.")
+
+        elif choice == "11":
             spec["design_system"] = design_system
             _save_spec(project_dir, spec)
             _write_design_system_md(project_dir, design_system)

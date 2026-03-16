@@ -790,7 +790,36 @@ def run_optional_assisted_discovery(
     return merged_spec
 
 
-def run_new_project(spec_path=None, assist: bool = False):
+def _apply_design_reference(spec: dict[str, Any], reference: str | None) -> dict[str, Any]:
+    """Analyze design references and merge into design system if reference path provided."""
+    if not reference:
+        return spec
+
+    from initializer.engine.design_reference_engine import (
+        analyze_design_references,
+        merge_reference_into_design_system,
+    )
+
+    print("\n🖼️  Analyzing design references...")
+    try:
+        extraction = analyze_design_references(reference)
+        if extraction:
+            design_system = spec.get("design_system", {})
+            spec["design_system"] = merge_reference_into_design_system(design_system, extraction)
+            style = extraction.get("overall_style", "")
+            if style:
+                print(f"  Style: {style}")
+            print("  ✅ Design reference tokens merged into design system.\n")
+        else:
+            print("  ⚠️  No tokens extracted from references.\n")
+    except Exception as exc:
+        print(f"  ⚠️  Design reference analysis failed: {exc}")
+        print("  Continuing without design references.\n")
+
+    return spec
+
+
+def run_new_project(spec_path=None, assist: bool = False, reference: str | None = None):
     if spec_path:
         try:
             spec = load_project_spec(spec_path)
@@ -820,6 +849,7 @@ def run_new_project(spec_path=None, assist: bool = False):
     spec["stories"] = generate_stories(spec)
     spec = refine_spec(spec)
     spec = derive_downstream_artifacts(spec)
+    spec = _apply_design_reference(spec, reference)
 
     errors = validate_prd(spec)
     if errors:

@@ -7,6 +7,7 @@ Usage:
     initializer run --assist           # full interactive flow
     initializer run --assist --dry-run # everything except actual Codex execution
     initializer run --spec path.json   # from existing spec, skip interactive
+    initializer run --assist --reference ./designs/  # with design references
 """
 
 from __future__ import annotations
@@ -70,6 +71,7 @@ def run_full_pipeline(
     assist: bool = False,
     dry_run: bool = False,
     skip_ralph: bool = False,
+    reference: str | None = None,
 ) -> int:
     """Run the full Specwright pipeline."""
 
@@ -86,7 +88,7 @@ def run_full_pipeline(
     print("Step 1/4: Generate project")
     print("-" * 40)
 
-    exit_code = run_new_project(spec_path, assist=assist)
+    exit_code = run_new_project(spec_path, assist=assist, reference=reference)
     if exit_code and exit_code != 0:
         print("\nPipeline stopped: project generation failed.")
         return exit_code
