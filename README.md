@@ -80,7 +80,6 @@ initializer new
 cd output/my-project
 npm install
 docker compose up -d
-cp .env.example .env.local
 npm run dev
 # → http://localhost:3000 (frontend)
 # → http://localhost:3000/admin (Payload admin, if editorial-cms)
@@ -216,9 +215,12 @@ Challenges by archetype: cache invalidation, preview vs production, SEO vs auth 
 
 ## Design References
 
-Point Specwright to screenshots of designs you want to match:
+Point Specwright to screenshots of designs you want to match. Create a folder (e.g. `designs/`) and drop your reference images there (PNG, JPG, WebP):
 
 ```bash
+mkdir designs/
+# copy your screenshots into designs/
+
 initializer new --assist --reference ./designs/
 # or
 initializer design output/my-project --reference ./designs/
@@ -294,14 +296,38 @@ AI enters at three points:
 
 The AI never replaces the deterministic pipeline. It refines inputs to it.
 
+## Examples
+
+The `examples/` folder contains pre-filled spec files you can pass directly to `initializer new --spec` to generate a project without going through the interactive flow:
+
+```bash
+# Minimal task manager (node-api + postgres) — good starting point
+initializer new --spec examples/simple-task-manager.spec.json
+
+# Editorial CMS (Next.js + Payload + postgres) — full content model
+initializer new --spec examples/next-payload-postgres.input.yaml
+```
+
+The JSON spec in `simple-task-manager.spec.json` is annotated with comments explaining each field and valid options — open it to see the format before writing your own.
+
+## Development
+
+```bash
+make install      # create .venv and install package
+make dev          # install with dev dependencies (pytest)
+make test         # run test suite
+make test-verbose # run tests with full output
+make clean        # remove __pycache__ and .pyc files
+```
+
 ## Testing
 
 ```bash
-pip install pytest
+pip install -e ".[dev]"
 python -m pytest tests -q
 ```
 
-157+ tests covering: archetype detection, capability derivation, signal governance, story generation (enriched fields, dependencies, stack-aware paths), architecture engine (communication, boundaries), domain model (entities by archetype, roles, business rules), project structure (Node/Python/Go), challenges engine (per-archetype challenges, decisions), bundle generation (stack-aware commands), and e2e editorial pipeline.
+238+ tests covering: archetype detection, capability derivation, signal governance, story generation (enriched fields, dependencies, stack-aware paths), architecture engine (communication, boundaries), domain model (entities by archetype, roles, business rules), project structure (Node/Python/Go), challenges engine (per-archetype challenges, decisions), bundle generation (stack-aware commands), assist flow (discovery, conflicts, challenge decisions), and e2e editorial pipeline.
 
 ## Requirements
 

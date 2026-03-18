@@ -1,0 +1,25 @@
+{
+  "_comment": "Example spec for a simple internal task manager. Run with: initializer new --spec examples/simple-task-manager.spec.json",
+
+  "prompt": "A task management app for small teams with kanban boards, deadlines, and team assignments",
+
+  "answers": {
+    "project_name": "TaskFlow",
+    "project_slug": "taskflow",
+
+    "summary": "Internal task management app with kanban boards, deadlines, and team assignments",
+
+    "surface": "internal_admin_only",
+    "_surface_options": ["internal_admin_only", "admin_plus_public_site"],
+
+    "deploy_target": "docker",
+    "_deploy_target_options": ["docker", "docker_and_k8s_later"]
+  },
+
+  "stack": {
+    "frontend": "nextjs",
+    "backend": "node-api",
+    "database": "postgres",
+    "_stack_notes": "For a Payload CMS project, set backend to 'payload'"
+  }
+}

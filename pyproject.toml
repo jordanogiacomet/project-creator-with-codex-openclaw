@@ -17,5 +17,8 @@ dependencies = [
 [project.scripts]
 initializer = "initializer.cli:main"
 
+[project.optional-dependencies]
+dev = ["pytest"]
+
 [tool.setuptools.packages.find]
 include = ["initializer*"]
