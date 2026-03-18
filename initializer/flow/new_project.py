@@ -11,7 +11,7 @@ from initializer.engine.architecture_engine import generate_architecture
 from initializer.engine.constraint_engine import generate_constraints
 from initializer.engine.design_system_engine import generate_design_system
 from initializer.engine.risk_engine import analyze_risks
-from initializer.engine.architeture_diagram_engine import (
+from initializer.engine.architecture_diagram_engine import (
     generate_architecture_diagram,
 )
 from initializer.engine.story_engine import generate_stories

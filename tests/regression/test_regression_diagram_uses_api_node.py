@@ -1,4 +1,4 @@
-from initializer.engine.architeture_diagram_engine import generate_architecture_diagram
+from initializer.engine.architecture_diagram_engine import generate_architecture_diagram
 
 
 def test_regression_diagram_uses_api_as_application_node_when_present():
