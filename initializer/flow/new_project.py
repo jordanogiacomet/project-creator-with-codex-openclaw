@@ -54,12 +54,20 @@ def prompt_choice(label, options, default=None):
         else:
             print(f" {i}. {option}")
 
-    value = input("> ").strip()
-    if not value and default:
-        return default
+    while True:
+        value = input("> ").strip()
+        if not value and default:
+            return default
 
-    idx = int(value) - 1
-    return options[idx]
+        if value.isdigit():
+            idx = int(value) - 1
+            if 0 <= idx < len(options):
+                return options[idx]
+
+        if value in options:
+            return value
+
+        print("Please choose one of the listed options.\n")
 
 
 def prompt_boolean(label: str) -> tuple[str, bool]:
