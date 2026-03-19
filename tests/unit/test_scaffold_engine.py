@@ -51,6 +51,8 @@ def test_scaffold_creates_root_config_files(tmp_path):
         ".env.example",
         ".gitignore",
         "tsconfig.json",
+        "next-env.d.ts",
+        "tsconfig.test.json",
         "package.json",
         "next.config.ts",
         "postcss.config.mjs",
@@ -67,6 +69,7 @@ def test_scaffold_creates_nextjs_app_files(tmp_path):
     assert (tmp_path / "src/app/layout.tsx").exists()
     assert (tmp_path / "src/app/page.tsx").exists()
     assert (tmp_path / "src/app/globals.css").exists()
+    assert (tmp_path / "src/__tests__/smoke.test.tsx").exists()
 
 
 def test_scaffold_creates_placeholder_dirs(tmp_path):
@@ -186,6 +189,31 @@ def test_payload_creates_payload_specific_files(tmp_path):
     assert (tmp_path / "src/app/(payload)/layout.tsx").exists()
     assert (tmp_path / "src/app/(payload)/custom.scss").exists()
     assert (tmp_path / "src/app/(payload)/importMap.ts").exists()
+
+
+def test_payload_admin_page_imports_importmap_from_correct_path(tmp_path):
+    """page.tsx lives in admin/[[...segments]]/ — must reach ../../importMap, not ./importMap."""
+    write_scaffold(tmp_path, _payload_spec())
+
+    page = (tmp_path / "src/app/(payload)/admin/[[...segments]]/page.tsx").read_text()
+    assert '../../importMap' in page, "page.tsx must import importMap via ../../importMap"
+    assert './importMap"' not in page.replace("../../importMap", ""), (
+        "page.tsx must not use ./importMap (wrong relative path)"
+    )
+
+    not_found = (tmp_path / "src/app/(payload)/admin/[[...segments]]/not-found.tsx").read_text()
+    assert '../../importMap' in not_found, "not-found.tsx must import importMap via ../../importMap"
+    assert 'params, searchParams' in not_found, "not-found.tsx must pass params and searchParams to NotFoundPage"
+
+
+def test_payload_layout_passes_server_function(tmp_path):
+    """Payload v3.79+ requires serverFunction prop on RootLayout."""
+    write_scaffold(tmp_path, _payload_spec())
+
+    layout = (tmp_path / "src/app/(payload)/layout.tsx").read_text()
+    assert "serverFunction" in layout, "layout must pass serverFunction to RootLayout"
+    assert "handleServerFunctions" in layout, "layout must import handleServerFunctions"
+    assert '"use server"' in layout, "serverFunction must be a server action"
 
 
 def test_payload_config_references_database_uri(tmp_path):
@@ -405,6 +433,8 @@ def test_package_json_has_required_scripts(tmp_path):
     assert "lint" in scripts
     assert "test" in scripts
     assert "typecheck" in scripts
+    assert scripts["lint"] == "eslint ."
+    assert scripts["test"] == "tsx --tsconfig tsconfig.test.json --test src/**/*.test.ts src/**/*.test.tsx"
 
 
 def test_package_json_slug_and_name(tmp_path):
@@ -426,6 +456,46 @@ def test_package_json_has_base_deps(tmp_path):
     assert "next" in pkg["dependencies"]
     assert "typescript" in pkg["devDependencies"]
     assert "tailwindcss" in pkg["devDependencies"]
+    assert "@eslint/eslintrc" in pkg["devDependencies"]
+    assert "tsx" in pkg["devDependencies"]
+
+
+def test_tsconfig_includes_next_plugin_and_generated_types(tmp_path):
+    write_scaffold(tmp_path, _make_spec())
+
+    tsconfig = json.loads((tmp_path / "tsconfig.json").read_text())
+
+    assert {"name": "next"} in tsconfig["compilerOptions"]["plugins"]
+    assert ".next/types/**/*.ts" in tsconfig["include"]
+
+
+def test_tsconfig_test_switches_to_react_jsx(tmp_path):
+    write_scaffold(tmp_path, _make_spec())
+
+    tsconfig = json.loads((tmp_path / "tsconfig.test.json").read_text())
+
+    assert tsconfig["extends"] == "./tsconfig.json"
+    assert tsconfig["compilerOptions"]["jsx"] == "react-jsx"
+
+
+def test_eslint_config_uses_eslintrc_compat(tmp_path):
+    write_scaffold(tmp_path, _make_spec())
+
+    content = (tmp_path / "eslint.config.mjs").read_text()
+
+    assert '@eslint/eslintrc' in content
+    assert '@eslint/flatcompat' not in content
+    assert 'ignores:' in content
+
+
+def test_smoke_test_renders_project_title(tmp_path):
+    write_scaffold(tmp_path, _make_spec())
+
+    content = (tmp_path / "src/__tests__/smoke.test.tsx").read_text()
+
+    assert 'renderToStaticMarkup' in content
+    assert 'Test Project' in content
+    assert 'typeof Home' in content
 
 
 # -------------------------------------------------------
@@ -513,7 +583,7 @@ def test_node_api_postgres_has_migration_template(tmp_path):
     template_path = tmp_path / "src/lib/migration-template.cjs"
     assert template_path.exists()
     content = template_path.read_text()
-    assert "_pgm" in content
+    assert "void pgm;" in content
     assert "exports.up" in content
     assert "exports.down" in content
 
