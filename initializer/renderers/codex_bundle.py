@@ -17,6 +17,8 @@ import stat
 from pathlib import Path
 from typing import Any
 
+from initializer.engine.validation_contract import migration_commands
+
 
 def _get_decision_signals(spec: dict[str, Any]) -> dict[str, Any]:
     discovery = spec.get("discovery", {})
@@ -33,26 +35,7 @@ def _detect_migration_commands(spec: dict[str, Any]) -> dict[str, str]:
 
     Returns a dict with keys: run, create, status.
     """
-    backend = (spec.get("stack", {}).get("backend") or "").lower().strip()
-
-    if backend in ("payload", "payload-cms"):
-        return {
-            "run": "npx payload migrate",
-            "create": "npx payload migrate:create",
-            "status": "npx payload migrate:status",
-        }
-    elif backend == "django":
-        return {
-            "run": "python manage.py migrate",
-            "create": "python manage.py makemigrations",
-            "status": "python manage.py showmigrations",
-        }
-    else:
-        return {
-            "run": "npm run db:migrate",
-            "create": "npm run db:migrate:create",
-            "status": "npm run db:migrate:status",
-        }
+    return migration_commands(spec)
 
 
 def _detect_migration_command(spec: dict[str, Any]) -> str:
@@ -425,9 +408,9 @@ run_migrations() {{
     # Only run if the migration command is available
     # For payload: check if payload is installed
     # For npm scripts: check if the script exists in package.json
-    if [[ "$MIGRATION_CMD" == "npx payload migrate" ]]; then
+    if [[ "$MIGRATION_CMD" == "./node_modules/.bin/payload --disable-transpile migrate" ]] || [[ "$MIGRATION_CMD" == "payload --disable-transpile migrate" ]]; then
         # Check if payload is installed
-        if [[ ! -f "$SCRIPT_DIR/node_modules/.package-lock.json" ]] && ! npx payload --help &>/dev/null; then
+        if [[ ! -x "$SCRIPT_DIR/node_modules/.bin/payload" ]]; then
             return 0
         fi
         # Check if payload config exists (means backend is set up)

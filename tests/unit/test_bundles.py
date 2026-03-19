@@ -299,7 +299,7 @@ def test_openclaw_commands_json_payload_backend_has_payload_migrate(tmp_path):
 
     commands = json.loads((tmp_path / ".openclaw" / "commands.json").read_text())
 
-    assert "payload" in commands["commands"].get("db_migrate", "").lower()
+    assert commands["commands"].get("db_migrate") == "npm run db:migrate"
 
 
 def test_openclaw_commands_json_python_stack(tmp_path):
@@ -347,9 +347,9 @@ def test_codex_migration_commands_payload(tmp_path):
     spec = _make_spec(stack={"frontend": "nextjs", "backend": "payload", "database": "postgres"})
     cmds = _detect_migration_commands(spec)
 
-    assert cmds["run"] == "npx payload migrate"
-    assert cmds["create"] == "npx payload migrate:create"
-    assert cmds["status"] == "npx payload migrate:status"
+    assert cmds["run"] == "npm run db:migrate"
+    assert cmds["create"] == "npm run db:migrate:create"
+    assert cmds["status"] == "npm run db:migrate:status"
 
 
 def test_codex_migration_commands_django(tmp_path):
@@ -402,8 +402,8 @@ def test_codex_ralph_sh_uses_separate_migration_commands(tmp_path):
     write_codex_bundle(tmp_path, spec)
 
     content = (tmp_path / "ralph.sh").read_text()
-    assert "npx payload migrate:create" in content
-    assert "npx payload migrate:status" in content
+    assert "npm run db:migrate:create" in content
+    assert "npm run db:migrate:status" in content
 
 
 def test_codex_ralph_sh_uses_installed_codex_cli(tmp_path):
