@@ -13,7 +13,7 @@ build/
 .env.*.local
 
 # Generated output
-
+output/
 # OS
 .DS_Store
 Thumbs.db
