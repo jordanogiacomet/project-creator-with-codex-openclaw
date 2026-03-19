@@ -500,6 +500,8 @@ def test_vitest_config_targets_generated_smoke_tests(tmp_path):
     content = (tmp_path / "vitest.config.ts").read_text()
 
     assert 'defineConfig' in content
+    assert 'jsx: "automatic"' in content
+    assert 'jsxImportSource: "react"' in content
     assert 'environment: "node"' in content
     assert 'src/**/*.test.ts' in content
     assert 'passWithNoTests: false' in content

@@ -58,6 +58,7 @@ When the main agent makes code changes, record the new state here before moving 
 | BUG-017 | FIXED | Playbook/editorial workflow booleans (`draft_publish`, `preview`, `scheduled_publishing`) now remove disabled features before story generation |
 | QUALITY-002 | FIXED | CMS/editorial stories now have explicit content-model ownership, tighter dependencies, concrete preview/public/scheduler contracts, and less ambiguous storage/role language |
 | IMP-012 | FIXED | i18n capability stories now have stable `story_key`s and CMS i18n no longer overlaps with the generic `feature.i18n-setup` story |
+| BUG-018 | FIXED | Generated Vitest config now forces automatic JSX runtime so Next App Router TSX smoke tests do not fail with `React is not defined` |
 
 ---
 
@@ -225,6 +226,49 @@ This session closes the validation/test pipeline contract itself. The separate `
 
 - This session validated the generator/contracts thoroughly, but it did **not** rerun a fresh end-to-end `initializer new` + `prepare` + generated-project `npm build` / `ralph.sh` cycle after the new preview/public/scheduler wording changes.
 - The new CMS preview contract assumes the generated implementation will use explicit preview route handlers plus draft/public loader reuse; that contract is unit-tested but not yet runtime-verified in a freshly generated project.
+
+## Session 9 — Bootstrap Smoke Test Fix For Payload/Next Scaffold (Completed, 2026-03-19)
+
+### What was fixed
+
+1. **Vitest now compiles generated Next.js TSX with automatic JSX runtime**
+   - `initializer/renderers/scaffold_engine.py`
+   - Root cause: the generated smoke test imported `src/app/page.tsx` and rendered it through Vitest, but the generated `vitest.config.ts` did not force JSX automatic runtime for TSX imported from the Next App Router scaffold.
+   - Resulting failure in real generated project:
+     - `ReferenceError: React is not defined`
+     - failure site: `src/app/page.tsx`
+     - failing command: `npm test`
+   - Fix:
+     - generated `vitest.config.ts` now includes:
+       - `esbuild.jsx = "automatic"`
+       - `esbuild.jsxImportSource = "react"`
+
+2. **Regression coverage updated**
+   - `tests/unit/test_scaffold_engine.py`
+   - Added assertions that the generated Vitest config includes the automatic JSX runtime settings.
+
+3. **Real generated editorial project was patched and revalidated**
+   - `output/editorial-control-center/vitest.config.ts`
+   - Applied the same runtime setting in the already-generated project to confirm the failure disappeared without requiring full regeneration.
+
+### Validation performed
+
+1. **Focused scaffold regression**
+   - `.venv/bin/python -m pytest tests/unit/test_scaffold_engine.py -q`
+   - Result: `56 passed`
+
+2. **Full repository suite**
+   - `.venv/bin/python -m pytest -q`
+   - Result: `337 passed in 5.80s`
+
+3. **Real generated project validation (`output/editorial-control-center`)**
+   - `npm test` — PASS
+   - `npm run typecheck` — PASS
+   - `npm run build` — PASS
+
+### Remaining limitation
+
+- The Next.js build still prints a lockfile-selection warning because the repo root also has a `package-lock.json`. This is noisy but not a blocker for the generated project or the `ralph` loop.
 
 ## Session 4 — Editorial Validation and Payload v3.79 Compatibility (2026-03-19)
 

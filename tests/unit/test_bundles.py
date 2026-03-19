@@ -415,6 +415,28 @@ def test_codex_ralph_sh_uses_installed_codex_cli(tmp_path):
     assert "@openai/codex@latest" not in content
 
 
+def test_codex_ralph_sh_writes_story_prompt_without_shell_eval(tmp_path):
+    spec = _make_spec()
+    write_codex_bundle(tmp_path, spec)
+
+    content = (tmp_path / "ralph.sh").read_text()
+    assert 'cat > "$prompt_file" <<PROMPT_EOF' not in content
+    assert '$(if [[ -f "$STORIES_DIR/$story_id.md"' not in content
+    assert "printf '# Task: Implement %s — %s\\n\\n' \"$story_id\" \"$story_title\"" in content
+    assert "cat <<'PROMPT_EOF'" in content
+    assert 'cat "$STORIES_DIR/$story_id.md"' in content
+
+
+def test_codex_ralph_sh_writes_retry_error_without_shell_eval(tmp_path):
+    spec = _make_spec()
+    write_codex_bundle(tmp_path, spec)
+
+    content = (tmp_path / "ralph.sh").read_text()
+    assert 'printf \'```\\n%s\\n```\\n\\n\' "$previous_error"' in content
+    assert '$previous_error\n\\`\\`\\`' not in content
+    assert '$(if [[ -f "$STORIES_DIR/$story_id.md"' not in content
+
+
 def test_codex_ralph_sh_reads_validation_contract_from_commands_json(tmp_path):
     spec = _make_spec()
     write_codex_bundle(tmp_path, spec)
