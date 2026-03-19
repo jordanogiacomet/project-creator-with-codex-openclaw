@@ -365,6 +365,7 @@ def _detect_commands(project_dir: Path, spec: dict[str, Any]) -> dict[str, Any]:
         "build": "",
         "dev": "",
     }
+    notes: list[str] = []
 
     # Check if package.json exists (Node.js project)
     if (project_dir / "package.json").exists():
@@ -381,9 +382,16 @@ def _detect_commands(project_dir: Path, spec: dict[str, Any]) -> dict[str, Any]:
             if "dev" in scripts:
                 commands["dev"] = "npm run dev"
 
-            return commands
+            notes.append("Commands detected from project files.")
+            return {
+                "commands": commands,
+                "notes": notes,
+            }
         except (json.JSONDecodeError, OSError):
-            pass
+            notes.append(
+                "package.json exists but could not be parsed. "
+                "Falling back to stack-based defaults."
+            )
 
     # Suggest commands based on stack (pre-bootstrap)
     if frontend == "nextjs" or backend in ("node-api", "payload"):
@@ -397,7 +405,6 @@ def _detect_commands(project_dir: Path, spec: dict[str, Any]) -> dict[str, Any]:
         commands["build"] = ""
         commands["dev"] = ""
 
-    notes = []
     if not (project_dir / "package.json").exists() and not (project_dir / "pyproject.toml").exists():
         notes.append(
             "No package.json or pyproject.toml found. "
@@ -553,7 +560,11 @@ def run_prepare_project(path: str) -> int:
     prd_content = _build_consolidated_prd(spec)
     (project_dir / "PRD.md").write_text(prd_content, encoding="utf-8")
 
-    # --- Detect commands ---
+    # --- Regenerate openclaw bundle (with latest spec) ---
+    print("Regenerating .openclaw/ bundle...")
+    write_openclaw_bundle(project_dir, spec)
+
+    # --- Detect commands from actual project files ---
     print("Detecting validation commands...")
     commands_data = _detect_commands(project_dir, spec)
     openclaw_dir = project_dir / ".openclaw"
@@ -569,10 +580,6 @@ def run_prepare_project(path: str) -> int:
             print(f"  {cmd_name}: (not detected)")
 
     print("")
-
-    # --- Regenerate openclaw bundle (with latest spec) ---
-    print("Regenerating .openclaw/ bundle...")
-    write_openclaw_bundle(project_dir, spec)
 
     # --- Regenerate codex ralph.sh ---
     print("Regenerating ralph.sh...")
