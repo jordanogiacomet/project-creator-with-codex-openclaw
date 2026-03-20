@@ -83,6 +83,192 @@ When the main agent makes code changes, record the new state here before moving 
 
 ---
 
+## Session 20 — Bootstrap Skip-If-Ready Fix + Fresh Parallel Re-run (Partial, 2026-03-20)
+
+### What was fixed
+
+1. **Fixed the real bootstrap runner bug in the generated parallel loop**
+   - `initializer/renderers/codex_bundle.py`
+   - Added a generated `ralph.sh` preflight for:
+     - `bootstrap.repository`
+     - `bootstrap.repository-part-2`
+   - Behavior:
+     - detect when the prepared scaffold already satisfies the slice
+     - accept existing lint-config equivalents:
+       - `eslint.config.mjs`
+       - `eslint.config.js`
+       - `.eslintrc.js`
+       - `.eslintrc.cjs`
+       - `.eslintrc.json`
+     - run slice validation before invoking Codex
+     - if validation passes, append `DONE` directly with:
+       - `(scaffold already satisfied)`
+     - only fall back to Codex when the bootstrap scaffold is actually missing or invalid
+
+2. **Hardened bootstrap prompts instead of trusting Codex to infer scaffold state**
+   - `initializer/renderers/codex_bundle.py`
+   - Both normal and retry prompts now explicitly say:
+     - the scaffold already exists from `initializer prepare`
+     - audit before editing
+     - preserve working config files in place
+     - do not create duplicate lint configs
+     - do not touch files outside `Owned Files` unless a failing validation points directly to them
+
+3. **Added focused regression coverage**
+   - `tests/unit/test_bundles.py`
+   - New tests verify that generated `ralph.sh`:
+     - short-circuits bootstrap slices when the scaffold is already ready
+     - treats `eslint.config.mjs` as a valid existing lint config
+     - injects the new bootstrap preservation guardrails into the prompt
+
+### Root cause
+
+- The previous parallel runner always treated `SH-ST-003` as an implementation task and invoked Codex even though `initializer prepare` had already scaffolded the repo.
+- The prompt did not frame bootstrap slices as “audit/preserve existing scaffold”, so Codex reworked bootstrap files as if it were building the repo from scratch.
+- This was made worse by the plan owning `eslint.config.js` while the real scaffold already used `eslint.config.mjs`, which pushed Codex toward creating a duplicate JS lint config.
+- Result on the frozen repro clone:
+  - `package.json` rewritten
+  - `tsconfig.json` rewritten
+  - `.env.example` rewritten
+  - `eslint.config.js` created
+  - files outside the intended bootstrap slice also got touched
+
+### Files changed
+
+- `initializer/renderers/codex_bundle.py`
+- `tests/unit/test_bundles.py`
+- `analysis.md`
+
+### Exact commands executed
+
+```bash
+# Focused regression
+python3 -m py_compile initializer/renderers/codex_bundle.py tests/unit/test_bundles.py
+./.venv/bin/python -m pytest tests/unit/test_bundles.py -q
+
+# Required guard suite
+./.venv/bin/python -m pytest tests/unit/test_story_graph.py tests/unit/test_bundles.py tests/unit/test_story_engine.py tests/unit/test_prepare_project.py tests/unit/test_refine_engine.py
+
+# Fresh clone from frozen editorial spec
+RUN_SLUG="editorial-control-center-parallel-e2e-20260320-113257-bootstrapskip"
+TMP_SPEC="/tmp/editorial-control-center-parallel-e2e-20260320-113257-bootstrapskip.x5WBmS.json"
+jq --arg slug "$RUN_SLUG" '.project_slug = $slug | .answers.project_slug = $slug' output/editorial-control-center/spec.json > "$TMP_SPEC"
+./.venv/bin/python -m initializer new --spec "$TMP_SPEC"
+./.venv/bin/python -m initializer prepare "output/$RUN_SLUG"
+cd "output/$RUN_SLUG"
+./ralph.sh --dry-run
+PATH="/home/jordanogiacomet/.nvm/versions/node/v24.11.1/bin:$PATH" npm install
+PATH="/home/jordanogiacomet/.nvm/versions/node/v24.11.1/bin:$PATH" ./ralph.sh
+
+# Frozen-state inspection after confirming the bootstrap fix
+sed -n '1,200p' output/editorial-control-center-parallel-e2e-20260320-113257-bootstrapskip/progress.txt
+for f in output/editorial-control-center-parallel-e2e-20260320-113257-bootstrapskip/.openclaw/progress/*.txt; do sed -n '1,120p' "$f"; done
+./.venv/bin/python - <<'PY'
+from pathlib import Path
+from initializer.runtime.story_scheduler import load_completed_from_progress
+path = Path('output/editorial-control-center-parallel-e2e-20260320-113257-bootstrapskip/progress.txt')
+completed = sorted(load_completed_from_progress(path))
+invalid = [item for item in completed if '(' in item or ')' in item or not item.startswith('ST-')]
+print('completed=', completed)
+print('invalid=', invalid)
+print('targets=', {sid: sid in completed for sid in ['ST-012','ST-012b','ST-902','ST-903']})
+PY
+./.venv/bin/python - <<'PY'
+from pathlib import Path
+import json
+from initializer.renderers.scaffold_engine import _package_json, _tsconfig, _env_example
+spec = json.loads(Path('output/editorial-control-center-parallel-e2e-20260320-113257-bootstrapskip/spec.json').read_text())
+current = Path('output/editorial-control-center-parallel-e2e-20260320-113257-bootstrapskip')
+checks = {
+    'package.json': _package_json(spec),
+    'tsconfig.json': _tsconfig(spec),
+    '.env.example': _env_example(spec),
+}
+for rel, expected in checks.items():
+    actual = (current / rel).read_text()
+    print(rel, 'MATCH' if actual == expected else 'DIFF')
+PY
+test -f output/editorial-control-center-parallel-e2e-20260320-113257-bootstrapskip/eslint.config.js && echo eslint_js_present || echo eslint_js_missing
+```
+
+### Validation performed
+
+1. **Focused regression**
+   - `./.venv/bin/python -m pytest tests/unit/test_bundles.py -q`
+   - Result: `55 passed`
+
+2. **Required guard suite**
+   - `./.venv/bin/python -m pytest tests/unit/test_story_graph.py tests/unit/test_bundles.py tests/unit/test_story_engine.py tests/unit/test_prepare_project.py tests/unit/test_refine_engine.py`
+   - Result: **164 passed**
+
+3. **Fresh clone dry-run**
+   - `./ralph.sh --dry-run` passed on:
+     - `output/editorial-control-center-parallel-e2e-20260320-113257-bootstrapskip`
+
+4. **Real fresh-clone run proved the bootstrap fix**
+   - Shared preflight now ran instead of Codex:
+     - `Tests: PASS`
+     - `Lint: PASS`
+     - `Typecheck: PASS`
+     - `Build: PASS`
+   - Root progress recorded:
+     - `[2026-03-20T14:40:08Z] [shared] SH-ST-003 (ST-003) — START — Initialize project repository (part 1 of 2)`
+     - `[2026-03-20T14:48:44Z] [shared] SH-ST-003 (ST-003) — DONE — Initialize project repository (part 1 of 2) (scaffold already satisfied)`
+
+5. **Parallel ordering validated on the live rerun**
+   - After `shared` completed, the runner immediately entered:
+     - `backend`: `BE-ST-004`
+     - `frontend`: `FE-ST-901`
+   - Root `progress.txt` and per-track `.openclaw/progress/*.txt` both showed:
+     - `shared` completed first
+     - `frontend` and `backend` started in parallel
+     - `integration` had not started yet (correct at this frozen point)
+
+6. **Progress parser still clean**
+   - `load_completed_from_progress()` returned:
+     - `completed=['ST-003']`
+     - `invalid=[]`
+
+7. **Track membership for protected stories still correct**
+   - `shared-plan.json` -> `[]`
+   - `frontend-plan.json` -> `['ST-903', 'ST-012', 'ST-012b']`
+   - `backend-plan.json` -> `['ST-902', 'ST-903']`
+   - `integration-plan.json` -> `['ST-902', 'ST-903', 'ST-012', 'ST-012b']`
+
+8. **Bootstrap scaffold was preserved on the live rerun**
+   - `package.json` remained **MATCH** against the generator scaffold
+   - `tsconfig.json` remained **MATCH** against the generator scaffold
+   - `eslint.config.js` remained **absent**
+   - `eslint.config.mjs` remained the active lint config
+   - `.env.example` later changed to a DB-specific form, but only after the real backend DB slice (`ST-004`) started; it was no longer a bootstrap rewrite symptom
+
+### Final state
+
+- The urgent live blocker from Session 19 is fixed:
+  - `SH-ST-003` no longer invokes Codex when the scaffold already satisfies the bootstrap slice
+  - the runner marks the shared bootstrap slice `DONE` directly after validation
+  - the fresh rerun advances into `frontend` and `backend` in parallel
+- The bootstrap scaffold stayed intact:
+  - no duplicate `eslint.config.js`
+  - no bootstrap-driven rewrite of `package.json`
+  - no bootstrap-driven rewrite of `tsconfig.json`
+- Parser and the previously validated classification targets were not reopened and did not regress
+
+### Notes / observed environment noise
+
+- During the real parallel rerun, Codex emitted warnings from `~/.codex/logs_1.sqlite`:
+  - `migration 2 was previously applied but is missing in the resolved migrations`
+- These warnings did **not** block the bootstrap fix:
+  - the shared slice still completed via preflight
+  - frontend/backend Codex slices still launched
+- This looks like external Codex runtime state rather than a Specwright product regression, but it should be monitored if future runs fail for reasons unrelated to the generated project
+
+### Next steps
+
+1. Let the fresh parallel rerun continue longer in a future session if deeper end-to-end throughput evidence is needed beyond the bootstrap fix
+2. If `FE-ST-003b` later reworks already-ready repo files despite the new bootstrap guardrails, treat that as a separate follow-up; do not reopen parser/classification preemptively
+3. If Codex runtime-state warnings from `~/.codex/logs_1.sqlite` become fatal in a later rerun, document them as environment-level blockers rather than regressing the generator
+
 ## Session 19 — Live Parallel E2E On Fresh Editorial Clones (Partial, 2026-03-20)
 
 ### What happened
