@@ -382,10 +382,10 @@ extract_error_loci() {{
 
     # Extract file:line patterns from TypeScript/Next.js/ESLint output
     # Patterns: ./src/foo.ts(10,5), src/foo.ts:10:5, src/foo.ts(10), ./src/foo.tsx:10
-    loci=$(echo "$output" | grep -oE '(\\.?/)?src/[^ :()]+[:(][0-9]+[,):]' | head -15 | sort -u)
+    loci=$(echo "$output" | grep -oE '(\\.?/)?src/[^ :()]+[:(][0-9]+[,):]' | grep -v node_modules | head -15 | sort -u)
     if [[ -z "$loci" ]]; then
         # Fallback: any file:line pattern
-        loci=$(echo "$output" | grep -oE '[a-zA-Z0-9_./-]+\\.[a-z]+[:(][0-9]+[,):]' | head -15 | sort -u)
+        loci=$(echo "$output" | grep -oE '[a-zA-Z0-9_./-]+\\.[a-z]+[:(][0-9]+[,):]' | grep -v node_modules | head -15 | sort -u)
     fi
 
     echo "$loci"
@@ -541,6 +541,14 @@ enforce_owned_files() {{
     if [[ -n "$reverted" ]]; then
         echo "  [$track] Owned-files enforcement reverted unauthorized changes"
     fi
+}}
+
+git_init_scaffold() {{
+    if [[ -d "$SCRIPT_DIR/.git" ]]; then
+        return 0
+    fi
+    echo "Initializing git repo for owned-files tracking..."
+    (cd "$SCRIPT_DIR" && git init -q && git add -A && git commit -q -m "scaffold" --allow-empty)
 }}
 
 lint_config_exists() {{
@@ -1015,6 +1023,11 @@ run_track_plan() {{
             if [[ "$VALIDATION_OK" == true ]]; then
                 append_progress "$track" "$unit_id" "$source_story_id" "DONE" "$unit_title (scaffold already satisfied)"
                 echo "[$track $unit_order/$total] $unit_id — DONE (scaffold already satisfied)"
+                # Commit scaffold state so next git diff is scoped correctly
+                local git_lock=""
+                git_lock=$(acquire_lock "git")
+                (cd "$SCRIPT_DIR" && git add -A && git commit -q -m "slice: $unit_id (scaffold skip)" --allow-empty 2>/dev/null || true)
+                release_lock "$git_lock"
                 continue
             fi
 
@@ -1077,6 +1090,11 @@ run_track_plan() {{
                 fi
                 echo "[$track $unit_order/$total] $unit_id — DONE"
                 slice_done=true
+                # Commit slice changes so next git diff is scoped to next slice only
+                local git_lock=""
+                git_lock=$(acquire_lock "git")
+                (cd "$SCRIPT_DIR" && git add -A && git commit -q -m "slice: $unit_id" --allow-empty 2>/dev/null || true)
+                release_lock "$git_lock"
             else
                 last_error="$VALIDATION_ERRORS"
                 echo "  Validation failed (attempt $attempt)"
@@ -1097,6 +1115,7 @@ run_track_plan() {{
 }}
 
 TOTAL=$(jq '.total_stories' "$PLAN_FILE")
+git_init_scaffold
 echo ""
 echo "=== Ralph Loop: {project_name} ==="
 echo "Stories: $TOTAL"

@@ -1070,3 +1070,35 @@ def test_codex_ralph_sh_extracts_error_loci_for_retries(tmp_path):
     assert "start here" in content
     # append_validation_error must call extract_error_loci
     assert "loci=$(extract_error_loci" in content
+
+
+def test_codex_ralph_sh_extract_error_loci_filters_node_modules(tmp_path):
+    """ARCH-003-REFINE: error loci extraction must filter out node_modules paths."""
+    spec = _make_spec()
+    write_codex_bundle(tmp_path, spec)
+
+    content = (tmp_path / "ralph.sh").read_text()
+    assert "grep -v node_modules" in content
+
+
+def test_codex_ralph_sh_initializes_git_repo_for_owned_files(tmp_path):
+    """BUG-028: generated project must have git init so enforce_owned_files works."""
+    spec = _make_spec()
+    write_codex_bundle(tmp_path, spec)
+
+    content = (tmp_path / "ralph.sh").read_text()
+    assert "git_init_scaffold()" in content
+    assert "git init" in content
+    assert "git commit" in content
+    assert '"scaffold"' in content
+
+
+def test_codex_ralph_sh_commits_after_each_successful_slice(tmp_path):
+    """BUG-028: each successful slice is committed so next git diff is scoped."""
+    spec = _make_spec()
+    write_codex_bundle(tmp_path, spec)
+
+    content = (tmp_path / "ralph.sh").read_text()
+    assert "git add -A" in content
+    assert "slice: $unit_id" in content
+    assert 'acquire_lock "git"' in content

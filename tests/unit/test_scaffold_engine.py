@@ -543,15 +543,16 @@ def test_eslint_config_uses_eslintrc_compat(tmp_path):
     assert 'ignores:' in content
 
 
-def test_smoke_test_renders_project_title(tmp_path):
+def test_smoke_test_does_not_import_app_page(tmp_path):
+    """BUG-029: smoke test must not import app/page to avoid cross-track pollution."""
     write_scaffold(tmp_path, _make_spec())
 
     content = (tmp_path / "src/__tests__/smoke.test.ts").read_text()
 
-    assert 'renderToStaticMarkup' in content
-    assert 'Test Project' in content
-    assert 'typeof Home' in content
+    assert "app/page" not in content
+    assert "renderToStaticMarkup" not in content
     assert 'from "vitest"' in content
+    assert "React.createElement" in content
 
 
 # -------------------------------------------------------

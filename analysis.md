@@ -1,7 +1,7 @@
 # Specwright — Full Repository Analysis
 
 **Date**: 2026-03-18 (updated 2026-03-20)
-**Test suite**: 426/426 passed
+**Test suite**: 456/456 passed
 **Generated projects inspected**: `output/todo-app`, `output/todo-app-design`, `output/taskflow` (node-api), `output/newshub-cms` (Payload), `output/dentaldesk` (--assist flow), `output/editorial-control-center` (Payload editorial)
 
 ### Handoff For Future Agents
@@ -86,9 +86,9 @@ When the main agent makes code changes, record the new state here before moving 
 | ARCH-002 | ADDED | Integration gate: full build+typecheck+lint+test validation runs between parallel tracks completion and integration track start; blocks integration on failure |
 | ARCH-003 | ADDED | Locus extraction: `extract_error_loci()` parses validation output for file:line patterns and enriches retry prompts with structured `## Error Locations` section |
 | TESTS-007 | ADDED | 3 new tests for ARCH-001, ARCH-002, ARCH-003 (60 bundle tests total, 169 full suite) |
-| BUG-028 | OPEN | `enforce_owned_files()` uses `git diff --name-only HEAD` which resolves to the **parent specwright repo** (clones under `output/` have no `.git`); enforcement reverts parent-repo dirty files by coincidence but cannot reliably detect Codex edits to non-owned files within the clone itself |
-| BUG-029 | OBSERVED | `BE-ST-005` retry: `Cannot find package '@/components/Layout'` — backend validation fails because test imports `page.tsx` which imports a component created by the parallel frontend track; cross-track import pollution in shared test file |
-| ARCH-003-REFINE | OPEN | `extract_error_loci()` regex captures `node_modules/` paths (e.g. `vite/dist/node/chunks/config.js:22663`); should filter to prioritize `src/` paths |
+| BUG-028 | FIXED | `git_init_scaffold()` initializes a git repo in the generated clone before execution; each successful slice is committed with a lock so `git diff --name-only HEAD` is scoped to the current slice only |
+| BUG-029 | FIXED | Smoke test no longer imports `app/page.tsx`; replaced with framework-only assertions (React importable, `next/headers` resolves) that have no cross-track dependencies |
+| ARCH-003-REFINE | FIXED | `extract_error_loci()` now pipes through `grep -v node_modules` on both primary and fallback regex paths |
 
 ---
 
