@@ -82,10 +82,75 @@ When the main agent makes code changes, record the new state here before moving 
 | E2E-003 | PARTIAL | Fresh parallel live run reproduced on isolated editorial clones; preview and runner-entry validated, but the third live run was manually stopped while the first shared-slice `next build` was still compiling |
 | BUG-026 | FIXED | Generated `ralph.sh` validation: (a) reordered to build→typecheck→lint→test so `.next` artifacts exist for Server Component imports; (b) removed `rm -rf .next` which caused clientReferenceManifest races when Codex processes write to `.next` concurrently with validation builds; (c) added `flock .build.lock` around `next build` in generated `package.json` so ALL build invocations (validation + Codex) are serialized |
 | BUG-027 | FIXED | `run_migrations()` docker wait loop `for attempt in $(seq 1 10)` overwrote the outer retry loop's `attempt` variable — renamed to `db_wait_attempt` |
+| ARCH-001 | ADDED | Owned-files enforcement: after each Codex exec, `enforce_owned_files()` reverts any file modifications outside the slice's `owned_files` list via `git checkout HEAD` |
+| ARCH-002 | ADDED | Integration gate: full build+typecheck+lint+test validation runs between parallel tracks completion and integration track start; blocks integration on failure |
+| ARCH-003 | ADDED | Locus extraction: `extract_error_loci()` parses validation output for file:line patterns and enriches retry prompts with structured `## Error Locations` section |
+| TESTS-007 | ADDED | 3 new tests for ARCH-001, ARCH-002, ARCH-003 (60 bundle tests total, 169 full suite) |
 
 ---
 
-## Session 22 — Build Serialization Fix + Zero-Retry Parallel Run (In Progress, 2026-03-20)
+## Session 23 — Architectural Hardening: Owned-Files Enforcement, Integration Gate, Locus Extraction (Completed, 2026-03-20)
+
+### What happened
+
+1. **Collected Run 3 final throughput data**
+   - Run 3 (`editorial-control-center-parallel-e2e-20260320-144024-buildlock`) did NOT complete — stalled with 2 slices in-progress
+   - 9 slices completed (including shared) in 43m37s wall time, 0 retries
+   - `FE-ST-007` (started 18:26:37) and `BE-ST-900` (started 18:32:10) never completed — run was killed/stalled
+
+   | # | Slice | Track | Duration | Retries |
+   |---|-------|-------|----------|---------|
+   | 1 | SH-ST-003 | shared | 4m03s | 0 (scaffold skip) |
+   | 2 | FE-ST-901 | frontend | 4m13s | 0 |
+   | 3 | BE-ST-004 | backend | 8m24s | 0 |
+   | 4 | FE-ST-006 | frontend | 7m48s | 0 |
+   | 5 | BE-ST-005 | backend | 10m01s | 0 |
+   | 6 | FE-ST-001 | frontend | 11m52s | 0 |
+   | 7 | BE-ST-901 | backend | 9m20s | 0 |
+   | 8 | FE-ST-002 | frontend | 10m05s | 0 |
+   | 9 | BE-ST-001 | backend | 11m48s | 0 |
+
+2. **Implemented owned-files enforcement hard**
+   - New `enforce_owned_files()` function in `ralph.sh`
+   - After every Codex exec (first attempt and retries), checks `git diff --name-only HEAD` against the slice's `owned_files` list
+   - Any file modified by Codex that is NOT in `owned_files` gets reverted with `git checkout HEAD -- <file>`
+   - Supports directory prefixes (e.g. `src/collections/` matches `src/collections/Media.ts`)
+   - Called right after Codex succeeds, before migrations and validation
+
+3. **Implemented integration gate between tracks**
+   - After both frontend and backend parallel tracks complete, a full validation (build+typecheck+lint+test) runs as a gate
+   - If the gate fails, the integration track is skipped and `FAILURES` is incremented
+   - Prevents integration slices from starting on a broken codebase
+   - Uses existing `run_track_validation` with mode `"full"` and label `"integration-gate"`
+
+4. **Implemented validation granular with locus extraction**
+   - New `extract_error_loci()` function parses build/typecheck/lint/test output for `file:line` patterns
+   - Supports TypeScript patterns: `src/foo.ts(10,5)`, `src/foo.ts:10:5`, `./src/foo.tsx:10`
+   - Falls back to generic `file.ext:line` pattern matching
+   - `append_validation_error()` now appends extracted loci to `VALIDATION_ERRORS`
+   - Retry prompt includes a new `## Error Locations` section listing specific files/lines to fix first
+   - Reduces Codex retry "search radius" by pointing directly at broken files
+
+### Files changed
+
+- `initializer/renderers/codex_bundle.py` — added `enforce_owned_files()`, `extract_error_loci()`, integration gate block, locus-enriched retry prompt
+- `tests/unit/test_bundles.py` — 3 new tests: owned-files enforcement, integration gate, locus extraction
+
+### Validation performed
+
+1. `tests/unit/test_bundles.py`: 60 passed (was 57, +3 new)
+2. Full suite (5 test modules): 169 passed (was 166, +3 new)
+3. No warnings
+
+### Final state
+
+- All 3 architectural fixes implemented and tested
+- Run 3 throughput data collected (9/~16 slices completed, 0 retries, stalled externally)
+- Next session should: launch a fresh E2E run with all Session 22+23 fixes, verify owned-files enforcement in action, verify integration gate fires correctly
+
+---
+
+## Session 22 — Build Serialization Fix + Zero-Retry Parallel Run (Completed, 2026-03-20)
 
 ### What happened
 

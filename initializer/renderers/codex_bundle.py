@@ -376,12 +376,34 @@ validation_policy_contains() {{
         "$COMMANDS_FILE" >/dev/null 2>&1
 }}
 
+extract_error_loci() {{
+    local output="$1"
+    local loci=""
+
+    # Extract file:line patterns from TypeScript/Next.js/ESLint output
+    # Patterns: ./src/foo.ts(10,5), src/foo.ts:10:5, src/foo.ts(10), ./src/foo.tsx:10
+    loci=$(echo "$output" | grep -oE '(\\.?/)?src/[^ :()]+[:(][0-9]+[,):]' | head -15 | sort -u)
+    if [[ -z "$loci" ]]; then
+        # Fallback: any file:line pattern
+        loci=$(echo "$output" | grep -oE '[a-zA-Z0-9_./-]+\\.[a-z]+[:(][0-9]+[,):]' | head -15 | sort -u)
+    fi
+
+    echo "$loci"
+}}
+
 append_validation_error() {{
     local label="$1"
     local output="$2"
     local message
+    local loci
 
+    loci=$(extract_error_loci "$output")
     message="$label failure: $(echo "$output" | tail -20)"
+    if [[ -n "$loci" ]]; then
+        message="$message
+Error loci:
+$loci"
+    fi
     if [[ -n "$VALIDATION_ERRORS" ]]; then
         VALIDATION_ERRORS="$VALIDATION_ERRORS | $message"
     else
@@ -478,6 +500,47 @@ append_prompt_list() {{
         printf '%s %s\\n' "$prefix" "$item"
     done <<< "$items"
     printf '\\n'
+}}
+
+enforce_owned_files() {{
+    local plan_file="$1"
+    local index="$2"
+    local track="$3"
+    local owned_files
+    local changed_files
+    local reverted=""
+
+    owned_files=$(jq -r ".stories[$index].owned_files[]?" "$plan_file")
+    if [[ -z "$owned_files" ]]; then
+        return 0
+    fi
+
+    changed_files=$(cd "$SCRIPT_DIR" && git diff --name-only HEAD 2>/dev/null || true)
+    if [[ -z "$changed_files" ]]; then
+        return 0
+    fi
+
+    while IFS= read -r changed; do
+        [[ -n "$changed" ]] || continue
+        local is_owned=false
+        while IFS= read -r owned; do
+            [[ -n "$owned" ]] || continue
+            if [[ "$changed" == "$owned" ]] || [[ "$changed" == $owned/* ]]; then
+                is_owned=true
+                break
+            fi
+        done <<< "$owned_files"
+
+        if [[ "$is_owned" == false ]]; then
+            echo "  [$track] REVERT: $changed (not in owned_files)"
+            (cd "$SCRIPT_DIR" && git checkout HEAD -- "$changed" 2>/dev/null || true)
+            reverted="$reverted $changed"
+        fi
+    done <<< "$changed_files"
+
+    if [[ -n "$reverted" ]]; then
+        echo "  [$track] Owned-files enforcement reverted unauthorized changes"
+    fi
 }}
 
 lint_config_exists() {{
@@ -799,6 +862,16 @@ The previous attempt failed with:
 
 PROMPT_EOF
         printf '```\\n%s\\n```\\n\\n' "$previous_error"
+        local retry_loci
+        retry_loci=$(extract_error_loci "$previous_error")
+        if [[ -n "$retry_loci" ]]; then
+            printf '## Error Locations\\n\\nThe following files/lines had errors — start here:\\n\\n'
+            while IFS= read -r locus; do
+                [[ -n "$locus" ]] || continue
+                printf -- '- `%s`\\n' "$locus"
+            done <<< "$retry_loci"
+            printf '\\nOpen these files first and fix the specific errors before doing anything else.\\n\\n'
+        fi
         append_prompt_list "$plan_file" "$index" "prompt_rules" "Track Rules" "- "
         append_bootstrap_prompt_guardrails "$plan_file" "$index"
         cat <<'PROMPT_EOF'
@@ -984,6 +1057,8 @@ run_track_plan() {{
                 continue
             fi
 
+            enforce_owned_files "$plan_file" "$i" "$track"
+
             local migration_lock=""
             migration_lock=$(acquire_lock "migrations")
             run_migrations "$track" "$needs_migrations"
@@ -1058,7 +1133,19 @@ else
     fi
 
     if [[ $FAILURES -eq 0 ]]; then
-        run_track_plan "integration" "$INTEGRATION_PLAN_FILE" "$START_FROM" || FAILURES=$((FAILURES + 1))
+        echo ""
+        echo "=== Integration Gate: cross-track validation ==="
+        VALIDATION_OK=true
+        VALIDATION_ERRORS=""
+        run_track_validation "integration-gate" "full"
+        if [[ "$VALIDATION_OK" != true ]]; then
+            echo "Integration gate FAILED: $VALIDATION_ERRORS"
+            echo "Skipping integration track."
+            FAILURES=$((FAILURES + 1))
+        else
+            echo "Integration gate PASSED"
+            run_track_plan "integration" "$INTEGRATION_PLAN_FILE" "$START_FROM" || FAILURES=$((FAILURES + 1))
+        fi
     fi
 fi
 

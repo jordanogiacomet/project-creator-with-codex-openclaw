@@ -1015,3 +1015,58 @@ def test_codex_agents_md_has_typescript_conventions(tmp_path):
     assert "TypeScript conventions" in content
     assert ".js" in content
     assert "do NOT create" in content
+
+
+# -------------------------------------------------------
+# Session 23: Architectural hardening tests
+# -------------------------------------------------------
+
+
+def test_codex_ralph_sh_enforces_owned_files_after_codex_exec(tmp_path):
+    """Owned-files enforcement: after Codex exec, unauthorized file changes are reverted."""
+    spec = _make_spec()
+    write_codex_bundle(tmp_path, spec)
+
+    content = (tmp_path / "ralph.sh").read_text()
+    # The enforce_owned_files function must exist
+    assert "enforce_owned_files()" in content
+    # It must be called after Codex succeeds
+    assert 'enforce_owned_files "$plan_file" "$i" "$track"' in content
+    # It must use git checkout to revert unauthorized files
+    assert 'git checkout HEAD --' in content
+    # It must compare against owned_files from the plan
+    assert "owned_files[]" in content
+
+
+def test_codex_ralph_sh_has_integration_gate_before_integration_track(tmp_path):
+    """Integration gate: full validation runs between parallel tracks and integration."""
+    spec = _make_spec()
+    write_codex_bundle(tmp_path, spec)
+
+    content = (tmp_path / "ralph.sh").read_text()
+    assert "Integration Gate: cross-track validation" in content
+    assert 'run_track_validation "integration-gate" "full"' in content
+    # Gate must block integration on failure
+    assert "Integration gate FAILED" in content
+    assert "Integration gate PASSED" in content
+    # Gate must appear before integration track in the 'all' orchestration block
+    # (not the individual --track integration selector)
+    gate_pos = content.index("Integration Gate")
+    # Find the integration run that comes after the gate
+    integration_pos = content.index('run_track_plan "integration"', gate_pos)
+    assert integration_pos > gate_pos
+
+
+def test_codex_ralph_sh_extracts_error_loci_for_retries(tmp_path):
+    """Locus extraction: validation errors include file:line information."""
+    spec = _make_spec()
+    write_codex_bundle(tmp_path, spec)
+
+    content = (tmp_path / "ralph.sh").read_text()
+    # extract_error_loci function must exist
+    assert "extract_error_loci()" in content
+    # Retry prompt must include structured loci
+    assert "Error Locations" in content
+    assert "start here" in content
+    # append_validation_error must call extract_error_loci
+    assert "loci=$(extract_error_loci" in content
