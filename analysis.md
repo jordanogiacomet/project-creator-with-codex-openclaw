@@ -1,7 +1,7 @@
 # Specwright — Full Repository Analysis
 
 **Date**: 2026-03-18 (updated 2026-03-20)
-**Test suite**: 346/346 passed
+**Test suite**: 402/402 passed
 **Generated projects inspected**: `output/todo-app`, `output/todo-app-design`, `output/taskflow` (node-api), `output/newshub-cms` (Payload), `output/dentaldesk` (--assist flow), `output/editorial-control-center` (Payload editorial)
 
 ### Handoff For Future Agents
@@ -64,6 +64,86 @@ When the main agent makes code changes, record the new state here before moving 
 | BUG-021 | FIXED | Payload scaffold now generates `src/__tests__/setup-env.ts` and wires Vitest `setupFiles` so `.env.local` loads before importing `payload.config`, without weakening runtime `DATABASE_URI` requirements |
 | BUG-022 | FIXED | Payload scaffold now uses a migration wrapper plus `ralph.sh` sentinel handling so the post-story safety-net migrate step stays non-interactive and skips safely on dev-push markers or when no migrations are pending |
 | BUG-023 | FIXED | `_build_execution_plan()` now uses true topological sort instead of phase-first ordering — cross-phase dependencies (e.g. feature→product) are respected |
+| IMP-013 | FIXED | `CODEX_EFFORT` env var backported to generator — ralph.sh now uses `${CODEX_EFFORT:-medium}` instead of hardcoded `xhigh` |
+| SEC-001 | FIXED | `PAYLOAD_SECRET` fallback `"PLEASE-CHANGE-ME"` replaced with runtime throw on missing env var |
+| SEC-002 | ADDED | AGENTS.md now includes Security requirements section (password policy minLength:8, rate limiting, no hardcoded secrets) |
+| SEC-003 | ADDED | AGENTS.md now includes TypeScript conventions section (no .js/.jsx alongside .ts files) |
+| SEC-004 | FIXED | `JWT_SECRET` removed from Payload `.env.example` (Payload uses `PAYLOAD_SECRET`, JWT_SECRET was unused) |
+| TESTS-002 | ADDED | 20 new tests for `refine_engine.py` (was 0 tests for 196 lines) |
+| TESTS-003 | ADDED | 24 new tests for `discovery_merge.py` (was 3 tests for 1023 lines) |
+| TESTS-004 | ADDED | 7 new tests for `openclaw_bundle.py` internals (OPENCLAW.md, repo-contract, manifest, edge cases) |
+| TESTS-005 | ADDED | 5 new tests for codex_bundle + scaffold_engine (CODEX_EFFORT, PAYLOAD_SECRET, security, TypeScript, JWT_SECRET) |
+
+---
+
+## Session 14 — Generator Hardening + Test Coverage Expansion (Completed, 2026-03-20)
+
+### What was done
+
+1. **Backported CODEX_EFFORT env var to generator (IMP-013)**
+   - `initializer/renderers/codex_bundle.py`
+   - ralph.sh template now emits `CODEX_EFFORT="${CODEX_EFFORT:-medium}"` alongside existing `CODEX_MODEL`
+   - Both `run_codex()` and `run_codex_retry()` use `$CODEX_EFFORT` instead of hardcoded `"xhigh"`
+   - Users can now control reasoning effort via env var: `CODEX_EFFORT=xhigh ./ralph.sh`
+
+2. **Fixed PAYLOAD_SECRET security fallback (SEC-001)**
+   - `initializer/renderers/scaffold_engine.py`
+   - Replaced `process.env.PAYLOAD_SECRET || "PLEASE-CHANGE-ME"` with runtime throw
+   - Generated `payload.config.ts` now crashes immediately if `PAYLOAD_SECRET` is not set, instead of running with a known secret
+
+3. **Added security guidance to generated AGENTS.md (SEC-002)**
+   - `initializer/renderers/codex_bundle.py` (`_build_agents_md()`)
+   - New `## Security requirements` section instructs Codex to:
+     - Never hardcode secrets or use fallback values
+     - Enforce `minLength: 8` on password fields (client + server)
+     - Add rate limiting to auth endpoints
+     - Import and use all env vars defined in `.env.example`
+
+4. **Added TypeScript conventions to generated AGENTS.md (SEC-003)**
+   - `initializer/renderers/codex_bundle.py` (`_build_agents_md()`)
+   - New `## TypeScript conventions` section instructs Codex to:
+     - Use `.ts`/`.tsx` exclusively — no `.js`/`.jsx` alongside
+     - Never create `.js` re-exports or duplicates of `.ts` modules
+   - Addresses the Users.ts/Users.js dual-file fragility from Session 13
+
+5. **Removed unused JWT_SECRET from Payload .env.example (SEC-004)**
+   - `initializer/renderers/scaffold_engine.py` (`_env_example()`)
+   - Payload projects use `PAYLOAD_SECRET` for auth; `JWT_SECRET` was generated but never imported
+   - `JWT_SECRET` now only emitted for `node-api` backend projects
+
+6. **Added 56 new tests across 4 files**
+   - `tests/unit/test_refine_engine.py` — **new file**, 20 tests covering `refine_prd`, `refine_stories`, `refine_spec`, ST-900/ST-901 generation, idempotency, stack-specific criteria, deduplication
+   - `tests/unit/test_discovery_merge.py` — 24 new tests covering decision signal merging, capability signal application, summary conflict detection, capability canonicalization, feature deduplication, immutable answer preservation, edge cases
+   - `tests/unit/test_bundles.py` — 10 new tests for CODEX_EFFORT, security requirements, TypeScript conventions, OPENCLAW.md content, repo-contract, manifest details, edge cases
+   - `tests/unit/test_scaffold_engine.py` — 2 new tests for PAYLOAD_SECRET rejection and JWT_SECRET omission in Payload projects
+
+### Files changed
+
+- `initializer/renderers/codex_bundle.py` — CODEX_EFFORT backport, security guidance, TypeScript conventions
+- `initializer/renderers/scaffold_engine.py` — PAYLOAD_SECRET throw, JWT_SECRET conditional
+- `output/editorial-e2e-test/.codex/AGENTS.md` — regenerated with new sections
+- `output/editorial-e2e-test/.env.example` — JWT_SECRET removed
+- `output/editorial-e2e-test/ralph.sh` — CODEX_EFFORT variable
+- `output/editorial-e2e-test/src/payload.config.ts` — PAYLOAD_SECRET throw
+- `tests/unit/test_bundles.py` — 10 new tests
+- `tests/unit/test_discovery_merge.py` — 24 new tests
+- `tests/unit/test_refine_engine.py` — new file, 20 tests
+- `tests/unit/test_scaffold_engine.py` — 2 new tests
+
+### Validation performed
+
+1. **Full test suite**: `402 passed in 4.42s` (was 346)
+2. **Focused regression**: All new tests pass individually
+3. **Branch alignment**: fix/ralph-evidence merged into master (fast-forward)
+
+### Remaining work for next session
+
+1. **Full editorial regeneration validation** — Run `initializer new --spec examples/next-payload-postgres.input.yaml` + `prepare` + `npm build` to verify new security/TypeScript guidance flows through to generated project
+2. **Story-splitting heuristic** — ST-012 took 178min in Session 13; design auto-split for complex stories
+3. **Rate limiting story** — AGENTS.md now instructs rate limiting, but no story AC explicitly creates the middleware
+4. **Password enforcement story** — AGENTS.md says minLength:8, but no story AC enforces it
+5. **Push to remote** — HTTPS auth not configured; needs `gh auth login` or SSH remote
+6. **SaaS roadmap** — API layer extraction, multi-tenancy (deferred to later phase)
 
 ---
 
@@ -1531,22 +1611,18 @@ Remaining without dedicated tests:
 
 10. Updated this `analysis.md` with the fixes, validations, and handoff notes.
 
-### Current working tree (updated after Session 6)
+### Current working tree (updated after Session 14)
 
 Current repo state:
 
 ```text
-Branch: fix/ralph-evidence
-HEAD: 29f8dca (`new implementations`)
-git status --short:
- M analysis.md
- M initializer/renderers/codex_bundle.py
- M initializer/renderers/scaffold_engine.py
- M tests/unit/test_bundles.py
- M tests/unit/test_scaffold_engine.py
+Branch: master
+HEAD: 3e78b93 (includes Session 14 hardening commit)
+Test suite: 402/402 passed
+git status: clean (except analysis.md update)
 ```
 
-All 6 story quality issues from Session 5 remain fixed at the **generator level** and committed. Additional unstaged follow-up fixes were added after real `ralph.sh` execution exposed two more generator/runtime issues.
+All Session 14 changes are committed. fix/ralph-evidence merged into master.
 
 ### Most relevant validations already run
 

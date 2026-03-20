@@ -1,8 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
 import pg from "pg";
 
+const require = createRequire(import.meta.url);
 const { Client } = pg;
 const SENTINEL_PREFIX = "__SPECWRIGHT_PAYLOAD_MIGRATIONS__:";
 
@@ -58,7 +60,7 @@ function normalizeMigrationImports() {
     const fullPath = path.join(migrationDir, file);
     const content = fs.readFileSync(fullPath, "utf8");
     const nextContent = content.replace(
-      /import\s*\{([^}]*)\}\s*from\s*['"]@payloadcms\/db-(mongodb|postgres)['"]/g,
+      /import\s*\{([^}]*)\}\s*from\s*['"]@payloadcms\/db-postgres['"]/g,
       (_match, specifiers) => {
         const normalized = specifiers
           .split(",")
@@ -109,10 +111,15 @@ function getPendingMigrationNames(migrationFiles, rows) {
     .filter((name) => !completed.has(name));
 }
 
-function runMigrationCommand(commandArgs) {
+function resolvePayloadBin() {
+  const payloadEntry = require.resolve("payload");
+  return path.resolve(payloadEntry, "..", "..", "bin.js");
+}
+
+function runPayloadCLI(commandArgs) {
   const result = spawnSync(
     process.execPath,
-    ["--import", "tsx/esm", path.resolve(process.cwd(), "scripts/payload-migrations-runner.mjs"), ...commandArgs],
+    [resolvePayloadBin(), "--disable-transpile", ...commandArgs],
     {
       cwd: process.cwd(),
       env: process.env,
@@ -138,7 +145,7 @@ async function main() {
   }
 
   if (command === "create") {
-    const status = runMigrationCommand(["create", ...args]);
+    const status = runPayloadCLI(["migrate:create", ...args]);
     if (status === 0) {
       normalizeMigrationImports();
     }
@@ -146,7 +153,7 @@ async function main() {
   }
 
   if (command === "status") {
-    process.exit(runMigrationCommand(["status", ...args]));
+    process.exit(runPayloadCLI(["migrate:status", ...args]));
   }
 
   if (command !== "migrate") {
@@ -177,7 +184,7 @@ async function main() {
     }
   }
 
-  process.exit(runMigrationCommand(["migrate", ...args]));
+  process.exit(runPayloadCLI(["migrate", ...args]));
 }
 
 main().catch((error) => {

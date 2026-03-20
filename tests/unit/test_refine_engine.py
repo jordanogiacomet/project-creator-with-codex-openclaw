@@ -4,6 +4,7 @@ from initializer.ai.refine_engine import (
     refine_prd,
     refine_stories,
     refine_spec,
+    _split_complex_stories,
 )
 
 
@@ -160,6 +161,114 @@ def test_backups_story_expected_files():
 
 
 # -------------------------------------------------------
+# refine_stories — ST-902 (rate limiting)
+# -------------------------------------------------------
+
+
+def test_refine_stories_adds_st902_when_auth_present():
+    spec = _make_spec(features=["authentication"])
+    result = refine_stories(spec)
+    ids = [s["id"] for s in result["stories"]]
+    assert "ST-902" in ids
+
+
+def test_refine_stories_no_st902_without_auth():
+    spec = _make_spec(features=[])
+    result = refine_stories(spec)
+    ids = [s["id"] for s in result["stories"]]
+    assert "ST-902" not in ids
+
+
+def test_rate_limiting_story_has_story_key():
+    spec = _make_spec(features=["authentication"])
+    result = refine_stories(spec)
+    st902 = next(s for s in result["stories"] if s["id"] == "ST-902")
+    assert st902["story_key"] == "security.rate-limiting"
+
+
+def test_rate_limiting_story_depends_on_auth():
+    spec = _make_spec(features=["authentication"])
+    result = refine_stories(spec)
+    st902 = next(s for s in result["stories"] if s["id"] == "ST-902")
+    assert "feature.authentication" in st902["depends_on"]
+
+
+def test_rate_limiting_story_payload_specific():
+    spec = _make_spec(
+        features=["authentication"],
+        stack={"frontend": "nextjs", "backend": "payload", "database": "postgres"},
+    )
+    result = refine_stories(spec)
+    st902 = next(s for s in result["stories"] if s["id"] == "ST-902")
+    assert any("/api/users/login" in ac for ac in st902["acceptance_criteria"])
+
+
+def test_rate_limiting_story_nextjs_specific():
+    spec = _make_spec(features=["authentication"])
+    result = refine_stories(spec)
+    st902 = next(s for s in result["stories"] if s["id"] == "ST-902")
+    assert any("next.js middleware" in ac.lower() for ac in st902["acceptance_criteria"])
+
+
+def test_rate_limiting_deduplication():
+    spec = _make_spec(
+        features=["authentication"],
+        stories=[{"id": "ST-902", "title": "existing rate limiting"}],
+    )
+    result = refine_stories(spec)
+    assert len([s for s in result["stories"] if s["id"] == "ST-902"]) == 1
+
+
+# -------------------------------------------------------
+# refine_stories — ST-903 (password policy)
+# -------------------------------------------------------
+
+
+def test_refine_stories_adds_st903_when_auth_present():
+    spec = _make_spec(features=["authentication"])
+    result = refine_stories(spec)
+    ids = [s["id"] for s in result["stories"]]
+    assert "ST-903" in ids
+
+
+def test_refine_stories_no_st903_without_auth():
+    spec = _make_spec(features=[])
+    result = refine_stories(spec)
+    ids = [s["id"] for s in result["stories"]]
+    assert "ST-903" not in ids
+
+
+def test_password_policy_story_has_story_key():
+    spec = _make_spec(features=["authentication"])
+    result = refine_stories(spec)
+    st903 = next(s for s in result["stories"] if s["id"] == "ST-903")
+    assert st903["story_key"] == "security.password-policy"
+
+
+def test_password_policy_story_depends_on_auth():
+    spec = _make_spec(features=["authentication"])
+    result = refine_stories(spec)
+    st903 = next(s for s in result["stories"] if s["id"] == "ST-903")
+    assert "feature.authentication" in st903["depends_on"]
+
+
+def test_password_policy_story_has_minlength_criteria():
+    spec = _make_spec(features=["authentication"])
+    result = refine_stories(spec)
+    st903 = next(s for s in result["stories"] if s["id"] == "ST-903")
+    assert any("8 characters" in ac for ac in st903["acceptance_criteria"])
+
+
+def test_password_policy_deduplication():
+    spec = _make_spec(
+        features=["authentication"],
+        stories=[{"id": "ST-903", "title": "existing password policy"}],
+    )
+    result = refine_stories(spec)
+    assert len([s for s in result["stories"] if s["id"] == "ST-903"]) == 1
+
+
+# -------------------------------------------------------
 # refine_stories — deduplication
 # -------------------------------------------------------
 
@@ -172,6 +281,84 @@ def test_refine_stories_does_not_duplicate():
     result = refine_stories(spec)
     assert len([s for s in result["stories"] if s["id"] == "ST-900"]) == 1
     assert len([s for s in result["stories"] if s["id"] == "ST-901"]) == 1
+
+
+# -------------------------------------------------------
+# _split_complex_stories
+# -------------------------------------------------------
+
+
+def _make_story(ac_count=3, file_count=2, **overrides):
+    story = {
+        "id": "ST-099",
+        "title": "Test story",
+        "story_key": "test.story",
+        "description": "A test story.",
+        "acceptance_criteria": [f"AC-{i}" for i in range(ac_count)],
+        "scope_boundaries": ["Do NOT touch unrelated code"],
+        "expected_files": [f"src/file-{i}.ts" for i in range(file_count)],
+        "depends_on": ["bootstrap.backend"],
+        "validation": {"commands": ["npm run build"], "manual_check": "It works"},
+    }
+    story.update(overrides)
+    return story
+
+
+def test_split_does_not_touch_small_stories():
+    story = _make_story(ac_count=5, file_count=3)
+    spec = _make_spec(stories=[story])
+    result = _split_complex_stories(spec)
+    assert len(result["stories"]) == 1
+    assert result["stories"][0]["id"] == "ST-099"
+
+
+def test_split_triggers_on_high_ac_count():
+    story = _make_story(ac_count=10, file_count=2)
+    spec = _make_spec(stories=[story])
+    result = _split_complex_stories(spec)
+    assert len(result["stories"]) == 2
+
+
+def test_split_triggers_on_high_file_count():
+    story = _make_story(ac_count=3, file_count=10)
+    spec = _make_spec(stories=[story])
+    result = _split_complex_stories(spec)
+    assert len(result["stories"]) == 2
+
+
+def test_split_part1_keeps_original_key():
+    story = _make_story(ac_count=10)
+    spec = _make_spec(stories=[story])
+    result = _split_complex_stories(spec)
+    assert result["stories"][0]["story_key"] == "test.story"
+    assert result["stories"][0]["id"] == "ST-099"
+
+
+def test_split_parts_chain_dependencies():
+    story = _make_story(ac_count=10)
+    spec = _make_spec(stories=[story])
+    result = _split_complex_stories(spec)
+    parts = result["stories"]
+    # Part 1 keeps original depends_on
+    assert "bootstrap.backend" in parts[0]["depends_on"]
+    # Part 2 depends on part 1's story_key
+    assert "test.story" in parts[1]["depends_on"]
+
+
+def test_split_preserves_scope_boundaries():
+    story = _make_story(ac_count=10)
+    spec = _make_spec(stories=[story])
+    result = _split_complex_stories(spec)
+    for part in result["stories"]:
+        assert "Do NOT touch unrelated code" in part["scope_boundaries"]
+
+
+def test_split_titles_include_part_numbers():
+    story = _make_story(ac_count=10)
+    spec = _make_spec(stories=[story])
+    result = _split_complex_stories(spec)
+    assert "(part 1 of 2)" in result["stories"][0]["title"]
+    assert "(part 2 of 2)" in result["stories"][1]["title"]
 
 
 # -------------------------------------------------------
@@ -191,3 +378,21 @@ def test_refine_spec_full_pipeline():
     ids = [s["id"] for s in result["stories"]]
     assert "ST-900" in ids
     assert "ST-901" in ids
+
+
+def test_refine_spec_includes_security_stories():
+    spec = _make_spec(features=["authentication"])
+    result = refine_spec(spec)
+    ids = [s["id"] for s in result["stories"]]
+    assert "ST-902" in ids
+    assert "ST-903" in ids
+
+
+def test_refine_spec_includes_splitting():
+    story = _make_story(ac_count=10)
+    spec = _make_spec(stories=[story])
+    result = refine_spec(spec)
+    # Original story split + ST-900 + ST-901 (no auth so no ST-902/903)
+    titles = [s["title"] for s in result["stories"]]
+    assert any("part 1 of 2" in t for t in titles)
+    assert any("part 2 of 2" in t for t in titles)

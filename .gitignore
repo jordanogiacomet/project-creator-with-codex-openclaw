@@ -14,8 +14,7 @@ build/
 .env.*.local
 
 # Generated output
-
-
+output/
 # Node (root-level lockfile is not part of the Python project)
 package-lock.json
 # OS

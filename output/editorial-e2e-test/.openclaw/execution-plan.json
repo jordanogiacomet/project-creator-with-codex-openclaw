@@ -1,5 +1,5 @@
 {
-  "total_stories": 15,
+  "total_stories": 22,
   "phases": [
     "bootstrap",
     "features",
@@ -12,17 +12,17 @@
     {
       "phase": "bootstrap",
       "description": "Project setup and infrastructure",
-      "count": 4
+      "count": 5
     },
     {
       "phase": "features",
       "description": "Core feature implementation",
-      "count": 7
+      "count": 12
     },
     {
       "phase": "product",
       "description": "Product shell and navigation",
-      "count": 2
+      "count": 3
     },
     {
       "phase": "domain",
@@ -43,11 +43,22 @@
   "stories": [
     {
       "id": "ST-003",
-      "title": "Initialize project repository",
+      "title": "Initialize project repository (part 1 of 2)",
       "status": "pending",
       "phase": "bootstrap",
       "story_key": "bootstrap.repository",
       "order": 1
+    },
+    {
+      "id": "ST-003b",
+      "title": "Initialize project repository (part 2 of 2)",
+      "status": "pending",
+      "phase": "bootstrap",
+      "story_key": "bootstrap.repository-part-2",
+      "depends_on": [
+        "bootstrap.repository"
+      ],
+      "order": 2
     },
     {
       "id": "ST-004",
@@ -58,7 +69,7 @@
       "depends_on": [
         "bootstrap.repository"
       ],
-      "order": 2
+      "order": 3
     },
     {
       "id": "ST-005",
@@ -69,7 +80,7 @@
       "depends_on": [
         "bootstrap.database"
       ],
-      "order": 3
+      "order": 4
     },
     {
       "id": "ST-901",
@@ -80,7 +91,7 @@
       "depends_on": [
         "bootstrap.database"
       ],
-      "order": 4
+      "order": 5
     },
     {
       "id": "ST-006",
@@ -91,7 +102,7 @@
       "depends_on": [
         "bootstrap.backend"
       ],
-      "order": 5
+      "order": 6
     },
     {
       "id": "ST-001",
@@ -102,7 +113,7 @@
       "depends_on": [
         "bootstrap.backend"
       ],
-      "order": 6
+      "order": 7
     },
     {
       "id": "ST-900",
@@ -113,7 +124,7 @@
       "depends_on": [
         "bootstrap.backend"
       ],
-      "order": 7
+      "order": 8
     },
     {
       "id": "ST-002",
@@ -124,7 +135,7 @@
       "depends_on": [
         "bootstrap.frontend"
       ],
-      "order": 8
+      "order": 9
     },
     {
       "id": "ST-007",
@@ -136,22 +147,22 @@
         "bootstrap.backend",
         "bootstrap.frontend"
       ],
-      "order": 9
+      "order": 10
     },
     {
       "id": "ST-008",
-      "title": "Implement role-based access control",
+      "title": "Implement role-based access control (part 1 of 2)",
       "status": "pending",
       "phase": "features",
       "story_key": "feature.roles",
       "depends_on": [
         "feature.authentication"
       ],
-      "order": 10
+      "order": 11
     },
     {
       "id": "ST-009",
-      "title": "Implement media library",
+      "title": "Implement media library (part 1 of 2)",
       "status": "pending",
       "phase": "features",
       "story_key": "feature.media-library",
@@ -159,7 +170,51 @@
         "feature.authentication",
         "product.cms-content-model"
       ],
-      "order": 11
+      "order": 12
+    },
+    {
+      "id": "ST-902",
+      "title": "Add rate limiting to auth endpoints",
+      "status": "pending",
+      "phase": "features",
+      "story_key": "security.rate-limiting",
+      "depends_on": [
+        "feature.authentication"
+      ],
+      "order": 13
+    },
+    {
+      "id": "ST-903",
+      "title": "Enforce password policy",
+      "status": "pending",
+      "phase": "features",
+      "story_key": "security.password-policy",
+      "depends_on": [
+        "feature.authentication"
+      ],
+      "order": 14
+    },
+    {
+      "id": "ST-008b",
+      "title": "Implement role-based access control (part 2 of 2)",
+      "status": "pending",
+      "phase": "features",
+      "story_key": "feature.roles-part-2",
+      "depends_on": [
+        "feature.roles"
+      ],
+      "order": 15
+    },
+    {
+      "id": "ST-009b",
+      "title": "Implement media library (part 2 of 2)",
+      "status": "pending",
+      "phase": "features",
+      "story_key": "feature.media-library-part-2",
+      "depends_on": [
+        "feature.media-library"
+      ],
+      "order": 16
     },
     {
       "id": "ST-010",
@@ -171,11 +226,11 @@
         "product.cms-content-model",
         "feature.roles"
       ],
-      "order": 12
+      "order": 17
     },
     {
       "id": "ST-013",
-      "title": "Implement public site pages",
+      "title": "Implement public site pages (part 1 of 2)",
       "status": "pending",
       "phase": "product",
       "story_key": "product.public-site-rendering",
@@ -184,7 +239,7 @@
         "feature.draft-publish",
         "infra.static-delivery"
       ],
-      "order": 13
+      "order": 18
     },
     {
       "id": "ST-011",
@@ -196,11 +251,11 @@
         "feature.draft-publish",
         "product.public-site-rendering"
       ],
-      "order": 14
+      "order": 19
     },
     {
       "id": "ST-012",
-      "title": "Implement scheduled publishing",
+      "title": "Implement scheduled publishing (part 1 of 2)",
       "status": "pending",
       "phase": "features",
       "story_key": "feature.scheduled-publishing",
@@ -209,7 +264,29 @@
         "feature.draft-publish",
         "product.public-site-rendering"
       ],
-      "order": 15
+      "order": 20
+    },
+    {
+      "id": "ST-013b",
+      "title": "Implement public site pages (part 2 of 2)",
+      "status": "pending",
+      "phase": "product",
+      "story_key": "product.public-site-rendering-part-2",
+      "depends_on": [
+        "product.public-site-rendering"
+      ],
+      "order": 21
+    },
+    {
+      "id": "ST-012b",
+      "title": "Implement scheduled publishing (part 2 of 2)",
+      "status": "pending",
+      "phase": "features",
+      "story_key": "feature.scheduled-publishing-part-2",
+      "depends_on": [
+        "feature.scheduled-publishing"
+      ],
+      "order": 22
     }
   ]
 }

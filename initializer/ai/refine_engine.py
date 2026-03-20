@@ -10,7 +10,17 @@ public-site is in the reconciled capabilities list.
 ST-900 and ST-901 now include acceptance criteria,
 scope boundaries, expected files, and validation
 derived from the project stack and capabilities.
+
+ST-902 (rate limiting) and ST-903 (password policy)
+are security-hardening stories added when
+authentication is present.
+
+Complex stories (>7 ACs or >8 expected files) are
+automatically split into smaller parts to keep
+AI execution time manageable.
 """
+
+import math
 
 
 def _has_public_site(spec):
@@ -172,9 +182,190 @@ def _build_backups_story(spec):
     }
 
 
+def _build_rate_limiting_story(spec):
+    """Build enriched ST-902 rate limiting story."""
+    stack = _get_stack(spec)
+    backend = stack["backend"]
+    frontend = stack["frontend"]
+
+    is_payload = backend in ("payload", "payload-cms")
+    is_nextjs = frontend in ("nextjs", "next.js", "next")
+
+    acceptance_criteria = [
+        "Auth endpoints return 429 Too Many Requests after exceeding the request threshold",
+        "Rate limiter uses a sliding window or token bucket algorithm with configurable limits",
+        "Responses include rate limit headers: X-RateLimit-Limit, X-RateLimit-Remaining, and Retry-After",
+    ]
+
+    expected_files = [
+        "src/lib/rate-limit.ts",
+    ]
+
+    if is_payload:
+        acceptance_criteria.append(
+            "Rate limiting applies to Payload endpoints /api/users/login and /api/users/create"
+        )
+
+    if is_nextjs:
+        acceptance_criteria.append(
+            "Rate limiting is implemented as Next.js middleware or API route wrapper"
+        )
+        expected_files.append("src/middleware.ts")
+
+    scope_boundaries = [
+        "Do NOT implement IP-based blocking or ban lists",
+        "Do NOT implement CAPTCHA or challenge-response mechanisms",
+        "Do NOT implement distributed rate limiting — in-memory is sufficient for MVP",
+    ]
+
+    return {
+        "id": "ST-902",
+        "title": "Add rate limiting to auth endpoints",
+        "story_key": "security.rate-limiting",
+        "description": "Protect authentication endpoints against brute-force attacks with configurable rate limiting.",
+        "acceptance_criteria": acceptance_criteria,
+        "scope_boundaries": scope_boundaries,
+        "expected_files": expected_files,
+        "depends_on": ["feature.authentication"],
+        "validation": {
+            "commands": ["npm run build"],
+            "manual_check": "Rapidly hitting /api/auth/login returns 429 after threshold is exceeded",
+        },
+    }
+
+
+def _build_password_policy_story(spec):
+    """Build enriched ST-903 password policy story."""
+
+    acceptance_criteria = [
+        "Registration endpoint rejects passwords shorter than 8 characters with a 400 response and descriptive error message",
+        "Login form validates minimum password length of 8 characters on the client before submission",
+        "Password validation logic is centralized in a shared utility importable by both client and server",
+    ]
+
+    expected_files = [
+        "src/lib/validation.ts",
+    ]
+
+    scope_boundaries = [
+        "Do NOT implement password complexity rules (uppercase, special characters) beyond minimum length",
+        "Do NOT implement a password strength meter",
+        "Do NOT implement password history or reuse prevention",
+    ]
+
+    return {
+        "id": "ST-903",
+        "title": "Enforce password policy",
+        "story_key": "security.password-policy",
+        "description": "Enforce minimum password length of 8 characters on both client and server.",
+        "acceptance_criteria": acceptance_criteria,
+        "scope_boundaries": scope_boundaries,
+        "expected_files": expected_files,
+        "depends_on": ["feature.authentication"],
+        "validation": {
+            "commands": ["npm run build", "npm test"],
+            "manual_check": "Registering with a 3-character password returns 400; 8+ character password succeeds",
+        },
+    }
+
+
+# -------------------------------------------------------
+# Story-splitting heuristic
+# -------------------------------------------------------
+
+MAX_AC_COUNT = 7
+MAX_EXPECTED_FILES = 8
+
+_SUFFIX_LETTERS = "bcdefghijklmnopqrstuvwxyz"
+
+
+def _split_complex_stories(spec):
+    """Split stories that exceed complexity thresholds into smaller parts."""
+    stories = spec.get("stories", [])
+    new_stories = []
+
+    for story in stories:
+        acs = story.get("acceptance_criteria", [])
+        files = story.get("expected_files", [])
+
+        if len(acs) <= MAX_AC_COUNT and len(files) <= MAX_EXPECTED_FILES:
+            new_stories.append(story)
+            continue
+
+        parts = _split_story(story)
+        new_stories.extend(parts)
+
+    spec["stories"] = new_stories
+    return spec
+
+
+def _split_story(story):
+    """Split a single story into balanced parts."""
+    acs = story.get("acceptance_criteria", [])
+    files = story.get("expected_files", [])
+    num_parts = max(
+        math.ceil(len(acs) / MAX_AC_COUNT),
+        math.ceil(len(files) / MAX_EXPECTED_FILES) if files else 1,
+    )
+    num_parts = max(num_parts, 2)  # at least 2 parts if we're splitting
+
+    # Balanced AC chunks
+    ac_chunk_size = math.ceil(len(acs) / num_parts)
+    ac_chunks = [acs[i:i + ac_chunk_size] for i in range(0, len(acs), ac_chunk_size)]
+
+    # Balanced file chunks
+    if files:
+        file_chunk_size = math.ceil(len(files) / num_parts)
+        file_chunks = [files[i:i + file_chunk_size] for i in range(0, len(files), file_chunk_size)]
+    else:
+        file_chunks = [[] for _ in range(num_parts)]
+
+    # Pad chunks to same length
+    while len(ac_chunks) < num_parts:
+        ac_chunks.append([])
+    while len(file_chunks) < num_parts:
+        file_chunks.append([])
+
+    original_id = story["id"]
+    original_key = story["story_key"]
+    original_title = story["title"]
+    original_depends = story.get("depends_on", [])
+
+    parts = []
+    for i in range(num_parts):
+        part_num = i + 1
+        if i == 0:
+            part_id = original_id
+            part_key = original_key
+            part_depends = list(original_depends)
+        else:
+            suffix = _SUFFIX_LETTERS[i - 1] if i - 1 < len(_SUFFIX_LETTERS) else str(i + 1)
+            part_id = f"{original_id}{suffix}"
+            part_key = f"{original_key}-part-{part_num}"
+            # Chain: each subsequent part depends on the previous part's key
+            prev_key = original_key if i == 1 else f"{original_key}-part-{i}"
+            part_depends = [prev_key]
+
+        part = {
+            "id": part_id,
+            "title": f"{original_title} (part {part_num} of {num_parts})",
+            "story_key": part_key,
+            "description": story.get("description", ""),
+            "acceptance_criteria": ac_chunks[i],
+            "scope_boundaries": list(story.get("scope_boundaries", [])),
+            "expected_files": file_chunks[i],
+            "depends_on": part_depends,
+            "validation": dict(story.get("validation", {})),
+        }
+        parts.append(part)
+
+    return parts
+
+
 def refine_stories(spec):
 
     stories = spec.get("stories", [])
+    features = spec.get("features", [])
 
     ids = [s["id"] for s in stories]
 
@@ -183,6 +374,14 @@ def refine_stories(spec):
 
     if "ST-901" not in ids:
         stories.append(_build_backups_story(spec))
+
+    if "ST-902" not in ids:
+        if "authentication" in features:
+            stories.append(_build_rate_limiting_story(spec))
+
+    if "ST-903" not in ids:
+        if "authentication" in features:
+            stories.append(_build_password_policy_story(spec))
 
     spec["stories"] = stories
 
@@ -193,5 +392,6 @@ def refine_spec(spec):
 
     spec = refine_prd(spec)
     spec = refine_stories(spec)
+    spec = _split_complex_stories(spec)
 
     return spec
