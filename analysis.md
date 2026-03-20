@@ -86,6 +86,9 @@ When the main agent makes code changes, record the new state here before moving 
 | ARCH-002 | ADDED | Integration gate: full build+typecheck+lint+test validation runs between parallel tracks completion and integration track start; blocks integration on failure |
 | ARCH-003 | ADDED | Locus extraction: `extract_error_loci()` parses validation output for file:line patterns and enriches retry prompts with structured `## Error Locations` section |
 | TESTS-007 | ADDED | 3 new tests for ARCH-001, ARCH-002, ARCH-003 (60 bundle tests total, 169 full suite) |
+| BUG-028 | OPEN | `enforce_owned_files()` uses `git diff --name-only HEAD` which resolves to the **parent specwright repo** (clones under `output/` have no `.git`); enforcement reverts parent-repo dirty files by coincidence but cannot reliably detect Codex edits to non-owned files within the clone itself |
+| BUG-029 | OBSERVED | `BE-ST-005` retry: `Cannot find package '@/components/Layout'` — backend validation fails because test imports `page.tsx` which imports a component created by the parallel frontend track; cross-track import pollution in shared test file |
+| ARCH-003-REFINE | OPEN | `extract_error_loci()` regex captures `node_modules/` paths (e.g. `vite/dist/node/chunks/config.js:22663`); should filter to prioritize `src/` paths |
 
 ---
 
@@ -142,11 +145,33 @@ When the main agent makes code changes, record the new state here before moving 
 2. Full suite (5 test modules): 169 passed (was 166, +3 new)
 3. No warnings
 
+### Run 4 — Live E2E with Session 22+23 fixes (still active at session end)
+
+- Clone: `output/editorial-control-center-parallel-e2e-20260320-154353-archhard`
+- All 3 Session 23 fixes confirmed present in generated `ralph.sh`
+- `flock .build.lock` confirmed in `package.json`
+
+   | # | Slice | Track | Duration | Retries | Enforcement |
+   |---|-------|-------|----------|---------|-------------|
+   | 1 | SH-ST-003 | shared | 10m03s | 0 (scaffold skip, cold build) | n/a |
+   | 2 | FE-ST-901 | frontend | 19m33s | 0 | reverted 19 files |
+   | 3 | BE-ST-004 | backend | 9m31s | 0 | reverted 19 files |
+   | 4 | FE-ST-006 | frontend | in progress | ? | reverted 19 files |
+   | 5 | BE-ST-005 | backend | in progress | 1 | see BUG-029 |
+
+**Key observations:**
+1. **ARCH-001 (owned-files enforcement) confirmed working** — both frontend and backend Codex execs tried to modify files in `output/editorial-control-center/`, `output/editorial-e2e-test/`, and `.claude/` — all reverted automatically before validation
+2. **BUG-028 discovered**: enforcement uses `git diff HEAD` from the parent repo, not the clone's own state — works by coincidence (parent worktree was dirty) but won't reliably catch Codex edits to non-owned files within the clone
+3. **BUG-029 discovered**: `BE-ST-005` retry triggered because the shared smoke test (`src/__tests__/smoke.test.ts`) imports `src/app/(app)/page.tsx` which imports `@/components/Layout` — a component created by the parallel `FE-ST-006` frontend slice; cross-track import in a shared test
+4. **ARCH-003 (locus extraction) confirmed working** but captured `node_modules/vite/dist/...` alongside real `src/` paths — regex needs `node_modules` exclusion
+5. **Run still active** — `FE-ST-006` and `BE-ST-005` (retry) in progress at session end
+
 ### Final state
 
-- All 3 architectural fixes implemented and tested
+- All 3 architectural fixes implemented, tested, and **validated in live E2E**
 - Run 3 throughput data collected (9/~16 slices completed, 0 retries, stalled externally)
-- Next session should: launch a fresh E2E run with all Session 22+23 fixes, verify owned-files enforcement in action, verify integration gate fires correctly
+- Run 4 launched with all fixes; 3 slices completed, enforcement confirmed, 2 new bugs found
+- Next session should: fix BUG-028, BUG-029, ARCH-003-REFINE; check Run 4 final state; launch Run 5 if needed
 
 ---
 
