@@ -1,0 +1,36 @@
+{
+  "commands": {
+    "test": "npm test",
+    "lint": "npm run lint",
+    "build": "npm run build",
+    "typecheck": "npm run typecheck",
+    "dev": "npm run dev",
+    "db_start": "docker compose up -d postgres",
+    "db_stop": "docker compose down",
+    "db_migrate": "npm run db:migrate"
+  },
+  "setup": {
+    "install": "npm install",
+    "env": "test -f .env.local || cp .env.example .env.local",
+    "db_start": "docker compose up -d postgres",
+    "db_migrate": "npm run db:migrate"
+  },
+  "notes": [
+    "These commands are pre-populated from the project stack. Update them if the actual project setup differs.",
+    "The validation contract defines which steps are blocking vs warning-only.",
+    "Run 'typecheck' periodically to catch type errors early."
+  ],
+  "validation": {
+    "ecosystem": "node",
+    "test_runner": "vitest",
+    "requires_real_tests": true,
+    "block_on": [
+      "test",
+      "build",
+      "typecheck"
+    ],
+    "warn_on": [
+      "lint"
+    ]
+  }
+}

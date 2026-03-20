@@ -1,0 +1,64 @@
+# progress.txt
+# Append-only execution log for this generated project
+# Format:
+# [ISO-8601 timestamp] STORY-ID — STATUS — Description
+#
+# Statuses:
+# START
+# DONE
+# BLOCKED
+# INFO
+# VALIDATION
+#
+# Example:
+# [2026-03-14T12:00:00Z] ST-001 — START — Began implementation of authentication flow
+[2026-03-19T22:55:03Z] ST-003 — START — Initialize project repository
+[2026-03-19T23:07:21Z] ST-003 — DONE — Initialize project repository
+[2026-03-19T23:07:21Z] ST-004 — START — Setup database
+[2026-03-19T23:25:52Z] ST-004 — START — Setup database
+[2026-03-19T23:54:50Z] ST-004 — START — Setup database
+[2026-03-20T00:09:35Z] ST-004 — DONE — Setup database
+[2026-03-20T00:09:35Z] ST-005 — START — Setup backend service
+[2026-03-20T00:21:12Z] ST-005 — DONE — Setup backend service
+[2026-03-20T00:21:13Z] ST-006 — START — Create frontend application
+[2026-03-20T00:27:56Z] ST-006 — DONE — Create frontend application
+[2026-03-20T00:27:56Z] ST-002 — START — Configure static asset delivery
+[2026-03-20T00:37:29Z] ST-002 — DONE — Configure static asset delivery
+[2026-03-20T00:37:29Z] ST-007 — START — Implement authentication
+[2026-03-20T01:05:00Z] ST-007 — DONE — Implement authentication (manually verified: build OK, 8/8 tests pass, all AC met)
+[2026-03-20T01:09:28Z] ST-008 — START — Implement role-based access control
+[2026-03-20T01:25:12Z] ST-008 — DONE — Implement role-based access control
+[2026-03-20T01:25:13Z] ST-001 — START — Define CMS content model
+[2026-03-20T01:42:53Z] ST-001 — DONE — Define CMS content model
+[2026-03-20T01:42:53Z] ST-009 — START — Implement media library
+[2026-03-20T01:56:10Z] ST-009 — DONE — Implement media library
+[2026-03-20T01:56:10Z] ST-010 — START — Implement draft and publish workflow
+[2026-03-20T02:10:47Z] ST-010 — RETRY — Attempt 2: Typecheck failure: > editorial-control-center@0.1.0 typecheck
+> tsc --noEmit
+
+src/__tests__/content-status.test.ts(60,36): error TS2352: Conversion of type '{ data: { content_status: string; }; req: { user: { role: string; }; }; }' to type 'AccessArgs<any>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Types of property 'req' are incompatible.
+    Type '{ user: { role: string; }; }' is missing the following properties from type 'PayloadRequest': headers, context, i18n, payload, and 13 more.
+src/__tests__/content-status.test.ts(69,36): error TS2352: Conversion of type '{ data: { content_status: string; }; req: { user: { role: string; }; }; }' to type 'AccessArgs<any>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Types of property 'req' are incompatible.
+    Type '{ user: { role: string; }; }' is missing the following properties from type 'PayloadRequest': headers, context, i18n, payload, and 13 more.
+src/__tests__/content-status.test.ts(78,36): error TS2352: Conversion of type '{ data: { content_status: string; }; req: { user: { role: string; }; }; }' to type 'AccessArgs<any>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Types of property 'req' are incompatible.
+    Type '{ user: { role: string; }; }' is missing the following properties from type 'PayloadRequest': headers, context, i18n, payload, and 13 more.
+src/__tests__/content-status.test.ts(95,14): error TS2352: Conversion of type '{ user: { role: string; }; }' to type 'PayloadRequest' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ user: { role: string; }; }' is missing the following properties from type 'PayloadRequest': headers, context, i18n, payload, and 13 more.
+src/__tests__/content-status.test.ts(116,14): error TS2352: Conversion of type '{ user: { role: string; }; }' to type 'PayloadRequest' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ user: { role: string; }; }' is missing the following properties from type 'PayloadRequest': headers, context, i18n, payload, and 13 more.
+src/__tests__/content-status.test.ts(137,14): error TS2352: Conversion of type '{ user: { role: string; }; }' to type 'PayloadRequest' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ user: { role: string; }; }' is missing the following properties from type 'PayloadRequest': headers, context, i18n, payload, and 13 more.
+src/__tests__/content-status.test.ts(156,14): error TS2352: Conversion of type '{ user: { role: string; }; }' to type 'PayloadRequest' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ user: { role: string; }; }' is missing the following properties from type 'PayloadRequest': headers, context, i18n, payload, and 13 more.
+[2026-03-20T02:16:17Z] ST-010 — DONE — Implement draft and publish workflow (succeeded on attempt 2)
+[2026-03-20T02:16:17Z] ST-012 — START — Implement public site pages
+[2026-03-20T05:13:46Z] ST-012 — DONE — Implement public site pages
+[2026-03-20T05:13:47Z] ST-011 — START — Implement content preview
+[2026-03-20T05:23:05Z] ST-011 — DONE — Implement content preview
+[2026-03-20T05:23:06Z] ST-900 — START — Setup monitoring and logging
+[2026-03-20T05:42:35Z] ST-900 — DONE — Setup monitoring and logging
+[2026-03-20T05:42:35Z] ST-901 — START — Implement backups
+[2026-03-20T05:59:57Z] ST-901 — DONE — Implement backups
