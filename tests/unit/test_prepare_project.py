@@ -223,6 +223,73 @@ def test_prepare_preserves_detected_commands_after_bundle_regeneration(tmp_path)
     assert "package.json" in commands["notes"][0]
 
 
+def test_prepare_re_derives_stale_execution_metadata(tmp_path):
+    """BUG-040: prepare must re-derive execution metadata so fixes in
+    story_engine apply even to specs generated before those fixes existed."""
+    spec = _make_spec(
+        stories=[
+            {
+                "id": "ST-001",
+                "story_key": "bootstrap.repository",
+                "title": "Initialize repository",
+                "expected_files": [],
+            },
+            {
+                "id": "ST-010",
+                "story_key": "product.public-site-rendering",
+                "title": "Public site rendering",
+                "expected_files": [
+                    "src/app/(public)/page.tsx",
+                    "src/app/(public)/layout.tsx",
+                    "src/components/PublicNav.tsx",
+                ],
+                # Stale execution metadata — missing frontend_files
+                "execution": {
+                    "tracks": ["frontend"],
+                    "primary_track": "frontend",
+                    "parallelizable": False,
+                    "contract_domains": [],
+                    "frontend_files": [],
+                    "backend_files": [],
+                    "shared_files": [],
+                    "integration_files": [],
+                    "modes": {"frontend": "full"},
+                },
+            },
+        ],
+    )
+    _write_project_files(tmp_path, spec)
+    (tmp_path / "package.json").write_text(
+        json.dumps({"scripts": {"build": "next build", "dev": "next dev"}}),
+        encoding="utf-8",
+    )
+
+    with patch("initializer.flow.prepare_project._print_execution_preview"):
+        exit_code = run_prepare_project(str(tmp_path))
+
+    assert exit_code == 0
+
+    plan = json.loads(
+        (tmp_path / ".openclaw" / "execution-plan.json").read_text(encoding="utf-8")
+    )
+    parallel = plan.get("parallel_execution", {})
+    fe_plan = parallel.get("plans", {}).get("frontend", {})
+    fe_stories = fe_plan.get("stories", [])
+
+    # Find the public-site-rendering unit
+    pub_unit = None
+    for unit in fe_stories:
+        if unit.get("source_story_id") == "ST-010":
+            pub_unit = unit
+            break
+
+    assert pub_unit is not None, "ST-010 frontend unit not found in plan"
+    owned = pub_unit.get("owned_files", [])
+    # After re-derivation, frontend_files should contain the expected_files
+    assert "src/app/(public)/page.tsx" in owned
+    assert "src/components/PublicNav.tsx" in owned
+
+
 def test_prepare_node_pipeline_contract_stays_aligned_with_ralph(tmp_path):
     spec = _make_spec(
         stack={"frontend": "nextjs", "backend": "node-api", "database": "postgres"},

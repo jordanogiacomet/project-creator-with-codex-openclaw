@@ -20,6 +20,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from initializer.engine.story_engine import derive_execution_metadata
 from initializer.engine.validation_contract import detect_validation_bundle
 from initializer.renderers.codex_bundle import write_codex_bundle
 from initializer.renderers.openclaw_bundle import write_openclaw_bundle
@@ -509,6 +510,12 @@ def run_prepare_project(path: str) -> int:
     print("Writing consolidated PRD.md...")
     prd_content = _build_consolidated_prd(spec)
     (project_dir / "PRD.md").write_text(prd_content, encoding="utf-8")
+
+    # --- BUG-040: re-derive execution metadata so latest story_engine fixes
+    # apply even to specs generated before those fixes existed. ---
+    for story in spec.get("stories", []):
+        if isinstance(story, dict):
+            story["execution"] = derive_execution_metadata(story)
 
     # --- Regenerate openclaw bundle (with latest spec) ---
     print("Regenerating .openclaw/ bundle...")
