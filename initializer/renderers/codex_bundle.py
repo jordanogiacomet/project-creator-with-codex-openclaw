@@ -1014,6 +1014,15 @@ run_track_plan() {{
 
         append_progress "$track" "$unit_id" "$source_story_id" "START" "$unit_title"
 
+        # BUG-036: Auto-skip slices with no owned files — nothing to implement in this track
+        local owned_count
+        owned_count=$(jq -r ".stories[$i].owned_files | length" "$plan_file")
+        if [[ "$owned_count" -eq 0 ]]; then
+            echo "[$track $unit_order/$total] $unit_id — SKIP (no owned files for this track)"
+            append_progress "$track" "$unit_id" "$source_story_id" "DONE" "$unit_title (no owned files — auto-skip)"
+            continue
+        fi
+
         if bootstrap_scaffold_ready "$plan_file" "$i"; then
             echo "Bootstrap scaffold already exists for $unit_id. Validating before invoking Codex..."
             local validation_lock=""

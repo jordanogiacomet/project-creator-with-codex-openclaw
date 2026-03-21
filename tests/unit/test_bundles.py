@@ -1233,3 +1233,14 @@ def test_codex_ralph_sh_no_trap_cleanup_return(tmp_path):
     assert "trap _cleanup RETURN" not in content
     # Must still clean up temp files (rm -f before each return)
     assert 'rm -f "$prompt_file" "$output_file"' in content
+
+
+def test_codex_ralph_sh_auto_skip_empty_owned_files(tmp_path):
+    """BUG-036: Slices with owned_files: [] should be auto-skipped, not sent to Codex."""
+    spec = _make_spec()
+    write_codex_bundle(tmp_path, spec)
+
+    content = (tmp_path / "ralph.sh").read_text()
+    # run_track_plan should check owned_files length and skip when 0
+    assert 'owned_count=$(jq -r ".stories[$i].owned_files | length"' in content
+    assert "no owned files — auto-skip" in content

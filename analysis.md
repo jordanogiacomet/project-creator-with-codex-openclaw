@@ -1,7 +1,7 @@
 # Specwright — Full Repository Analysis
 
 **Date**: 2026-03-18 (updated 2026-03-21)
-**Test suite**: 470/470 passed
+**Test suite**: 471/471 passed
 **Generated projects inspected**: `output/todo-app`, `output/todo-app-design`, `output/taskflow` (node-api), `output/newshub-cms` (Payload), `output/dentaldesk` (--assist flow), `output/editorial-control-center` (Payload editorial)
 
 ### Handoff For Future Agents
@@ -106,6 +106,83 @@ When the main agent makes code changes, record the new state here before moving 
 | BUG-035 | FIXED | Removed `trap _cleanup RETURN` pattern from `run_codex_unit` and `run_codex_retry_unit` — was causing `unbound variable: prompt_file` when trap leaked to caller scope under `set -u` |
 | TESTS-011 | ADDED | 2 new tests for BUG-034 and BUG-035 (470 total, was 468) |
 | E2E-005 | PARTIAL | Run 6 on fresh editorial clone; Run 6a blocked by BUG-034+035 (SH-ST-003 looped 3x, then crashed). Run 6b after fix: SH-ST-003 PASS (scaffold skip), BE-ST-004 PASS, BE-ST-005 PASS; FE-ST-901 and BE-ST-901 Codex completed but validation incomplete (resource/timing) |
+| BUG-036 | FIXED | Slices with `owned_files: []` now auto-skip with DONE in `run_track_plan()` — prevents Codex from running on slices with no track-specific files (e.g. FE-ST-901, BE-ST-901) |
+| TESTS-012 | ADDED | 1 new test for BUG-036 (471 total, was 470) |
+| E2E-006 | PARTIAL | Run 7 on fresh editorial clone; SH-ST-003 PASS, BE-ST-004 PASS, BE-ST-005 PASS; FE-ST-901 and BE-ST-901 blocked by BUG-036 (owned_files: []); FE-ST-006 never started; 3 implemented / 2 failed tracks / 19 total |
+
+---
+
+## Session 27 — Run 7 E2E (2026-03-21)
+
+### What happened
+
+1. **Committed Session 26 changes**: `208a994` — BUG-034/035 fixes + 2 tests + analysis.md update
+
+2. **Generated fresh project**: `output/editorial-e2e-test/` from spec. Verified: no root `page.tsx` (BUG-030 ✓), `always_allowed` present (BUG-034 ✓), no `trap _cleanup RETURN` (BUG-035 ✓), `bash -n` passes.
+
+3. **Run 7 results** (wall-clock ~20min):
+
+   | # | Slice | Track | Duration | Retries | Validation | Enforcement | Notes |
+   |---|-------|-------|----------|---------|------------|-------------|-------|
+   | 1 | SH-ST-003 | shared | ~2m52s (scaffold skip) | 0 | Build/TC/Lint/Test PASS | n/a | BUG-034 fix confirmed |
+   | 2 | BE-ST-004 | backend | ~6m29s | 0 | Build/TC/Lint/Test PASS | 1 revert (progress.txt) | Created `src/lib/db.ts` with connection pooling |
+   | 3 | FE-ST-901 | frontend | ~10min (Codex) | 0 | Interleaved, unclear | n/a | owned_files: [] → "No code changes" → track failed (BUG-036) |
+   | 4 | BE-ST-005 | backend | ~6m4s | 0 | Build/TC/Lint/Test PASS | 2 reverts (progress.txt, backend.txt) | Created `src/server.ts` with health endpoint, updated `payload.config.ts` |
+   | 5 | BE-ST-901 | backend | ~4m21s (Codex) | 0 | Build/TC PASS (Lint/Test output lost) | n/a | owned_files: [] → created untracked scripts but slice never DONE (BUG-036) |
+   | - | FE-ST-006+ | frontend | not started | - | - | - | FE track failed at FE-ST-901, never reached FE-ST-006 |
+
+   **Summary**: 3 implemented / 2 failed tracks / 19 total stories.
+
+### Key findings
+
+1. **BUG-036 (NEW — HIGH PRIORITY)**: Slices with `owned_files: []` cause track failure. Both FE-ST-901 and BE-ST-901 have `owned_files: []` because the backup files are `integration_files`, not frontend/backend files. Codex processes them but produces no meaningful changes for that track, and the slice never completes DONE.
+
+   **Root cause**: `run_track_plan()` sends all slices to Codex regardless of whether they have owned files. When `owned_files: []`, enforcement can't properly scope changes, and validation may fail or produce no DONE marker.
+
+   **Proposed fix**: In `run_track_plan()`, skip slices where `owned_files: []` with an auto-DONE. These slices have no work for the current track.
+
+2. **BUG-034 confirmed**: SH-ST-003 scaffold skip passed on first attempt — no revert loop.
+
+3. **BUG-035 confirmed**: No `unbound variable` crash.
+
+4. **BUG-033 confirmed**: BE-ST-901 Codex ran `bash -n` only for backup scripts, did not attempt `pg_dump` or docker.
+
+5. **Parallel tracks confirmed**: FE and BE tracks launched simultaneously. BE-ST-004 completed while FE-ST-901 was still in Codex.
+
+6. **Typecheck race**: BE-ST-004 had Typecheck FAIL → rebuild → Typecheck PASS (same pattern as Run 6b). Not a blocker but worth investigating.
+
+7. **Codex quality**:
+   - `src/lib/db.ts`: Clean connection pooling with `pg`, validates `DATABASE_URI`, proper pool lifecycle
+   - `src/server.ts`: Payload init, health endpoint at `/api/health`, typed env validation
+   - `scripts/backup.sh` / `scripts/restore.sh`: Portable `pg_dump`/`pg_restore` with auto/docker mode detection, retention policy
+
+8. **FE-ST-006 NOT REACHED**: The critical BUG-030 validation still hasn't been tested E2E because the frontend track fails at FE-ST-901 before reaching FE-ST-006.
+
+9. **Wall-clock comparison**: Run 7 (~20min) vs Run 6b (~25min+) vs Run 5 (~45min for 6 slices). Velocity is improving but comparison is limited since Run 7 only completed 3 slices.
+
+### Files in generated project
+
+After Run 7, these files were created/modified by Codex:
+- `src/lib/db.ts` — BE-ST-004 (committed)
+- `.env.example` — BE-ST-004 (committed)
+- `docker-compose.yml` — BE-ST-004 (committed)
+- `src/payload.config.ts` — BE-ST-005 (committed)
+- `src/server.ts` — BE-ST-005 (committed)
+- `scripts/backup.sh` — BE-ST-901 (untracked, orphaned by BUG-036)
+- `scripts/restore.sh` — BE-ST-901 (untracked, orphaned by BUG-036)
+- `docs/backup-restore.md` — BE-ST-901 (untracked, orphaned by BUG-036)
+
+### BUG-036 fix (same session)
+
+**Fixed**: Added `owned_files` length check in `run_track_plan()` (`codex_bundle.py`). When `owned_count == 0`, the slice is auto-skipped with DONE status instead of being sent to Codex. This prevents both the wasted Codex invocation and the track failure.
+
+**Added 1 new test** (471 total, was 470): `test_codex_ralph_sh_auto_skip_empty_owned_files`
+
+### Next session priorities
+
+1. **Re-run E2E (Run 8)**: FE-ST-901 will auto-skip, allowing FE-ST-006 to finally execute — the critical BUG-030 validation.
+2. **Investigate typecheck race**: TC FAIL→PASS pattern still occurring on parallel track overlap.
+3. **Consider**: Add `flock` around `npx tsc --noEmit` in partial validation, similar to OPT-001 build lock.
 
 ---
 
