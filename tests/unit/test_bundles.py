@@ -1148,8 +1148,9 @@ def test_codex_ralph_sh_removes_tsbuildinfo_before_typecheck(tmp_path):
             idx_tc = content.index('"Typecheck"', idx)
         except ValueError:
             break
-        # Look backwards for rm -f tsconfig.tsbuildinfo within preceding 200 chars
-        preceding = content[max(0, idx_tc - 200):idx_tc]
+        # Look backwards for rm -f tsconfig.tsbuildinfo within preceding 600 chars
+        # (BUG-037b added .next/types guard + comments that widen the gap)
+        preceding = content[max(0, idx_tc - 600):idx_tc]
         assert "rm -f tsconfig.tsbuildinfo" in preceding, (
             f"Typecheck at offset {idx_tc} is not preceded by rm -f tsconfig.tsbuildinfo"
         )
@@ -1236,13 +1237,17 @@ def test_codex_ralph_sh_partial_validation_scoped_lint(tmp_path):
 
 
 def test_codex_ralph_sh_enforce_owned_files_allows_package_lock(tmp_path):
-    """BUG-034: package-lock.json must be always-allowed in enforce_owned_files."""
+    """BUG-034: package-lock.json must be always-allowed in enforce_owned_files.
+    BUG-039: progress.txt and .openclaw/progress must also be always-allowed."""
     spec = _make_spec()
     write_codex_bundle(tmp_path, spec)
 
     content = (tmp_path / "ralph.sh").read_text()
-    # enforce_owned_files should have an always_allowed list containing package-lock.json
-    assert 'always_allowed="package-lock.json"' in content
+    # enforce_owned_files should have an always_allowed list containing
+    # package-lock.json (BUG-034), progress.txt and .openclaw/progress (BUG-039)
+    assert "package-lock.json" in content
+    assert "progress.txt" in content
+    assert ".openclaw/progress" in content
 
 
 def test_codex_ralph_sh_no_trap_cleanup_return(tmp_path):

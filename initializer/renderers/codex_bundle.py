@@ -521,13 +521,23 @@ enforce_owned_files() {{
         return 0
     fi
 
-    # Always allow derived artifacts that change when their source changes
-    local always_allowed="package-lock.json"
+    # Always allow derived artifacts and ralph-managed files that must not
+    # be reverted even when a Codex slice touches them outside owned_files.
+    # BUG-039: progress files and lock dirs are written by ralph.sh between
+    # slices; reverting them breaks resume mode and crashes the pipeline.
+    local always_allowed="package-lock.json progress.txt .openclaw/progress"
 
     while IFS= read -r changed; do
         [[ -n "$changed" ]] || continue
-        # Skip always-allowed derived files
-        if [[ " $always_allowed " == *" $changed "* ]]; then
+        # Skip always-allowed derived files (exact or prefix match)
+        local skip_changed=false
+        for allowed in $always_allowed; do
+            if [[ "$changed" == "$allowed" ]] || [[ "$changed" == "$allowed"/* ]]; then
+                skip_changed=true
+                break
+            fi
+        done
+        if [[ "$skip_changed" == true ]]; then
             continue
         fi
         local is_owned=false
@@ -735,7 +745,15 @@ run_track_validation() {{
             # BUG-037: remove stale tsbuildinfo so incremental tsc doesn't
             # reference .next/types/ entries from a previous build.
             rm -f tsconfig.tsbuildinfo
-            run_validation_command "typecheck" "$TYPECHECK_CMD" "Typecheck" "block"
+            # BUG-037b: .next/types/ may not exist even after a successful build
+            # (e.g. first build for a track, or partial Next.js output).  Running
+            # typecheck with tsconfig including '.next/types/**/*.ts' will fail
+            # with TS6053.  Skip typecheck when the directory is absent.
+            if [[ -d .next/types ]]; then
+                run_validation_command "typecheck" "$TYPECHECK_CMD" "Typecheck" "block"
+            else
+                echo "Typecheck: SKIP (.next/types/ not found — build did not generate type stubs)"
+            fi
         fi
         run_validation_command "lint" "$LINT_CMD" "Lint" "warn"
         run_validation_command "test" "$TEST_CMD" "Tests" "warn"
@@ -748,7 +766,12 @@ run_track_validation() {{
         # BUG-037: remove stale tsbuildinfo so incremental tsc doesn't
         # reference .next/types/ entries from a previous build.
         rm -f tsconfig.tsbuildinfo
-        run_validation_command "typecheck" "$TYPECHECK_CMD" "Typecheck" "contract"
+        # BUG-037b: skip typecheck when .next/types/ was not generated
+        if [[ -d .next/types ]]; then
+            run_validation_command "typecheck" "$TYPECHECK_CMD" "Typecheck" "contract"
+        else
+            echo "Typecheck: SKIP (.next/types/ not found — build did not generate type stubs)"
+        fi
     fi
     run_validation_command "lint" "$LINT_CMD" "Lint" "contract"
 
@@ -1128,7 +1151,12 @@ run_track_plan() {{
                     # BUG-037: remove stale tsbuildinfo so incremental tsc doesn't
                     # reference .next/types/ entries from a previous build.
                     rm -f tsconfig.tsbuildinfo
-                    run_validation_command "typecheck" "$TYPECHECK_CMD" "Typecheck" "block"
+                    # BUG-037b: skip typecheck when .next/types/ was not generated
+                    if [[ -d .next/types ]]; then
+                        run_validation_command "typecheck" "$TYPECHECK_CMD" "Typecheck" "block"
+                    else
+                        echo "Typecheck: SKIP (.next/types/ not found — build did not generate type stubs)"
+                    fi
                 fi
                 # Scoped lint: only lint owned files instead of entire project
                 local owned_lint_files
