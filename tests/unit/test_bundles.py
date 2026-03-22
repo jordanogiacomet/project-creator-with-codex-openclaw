@@ -863,6 +863,22 @@ def test_codex_ralph_sh_orchestrates_parallel_tracks(tmp_path):
     assert 'API_CONTRACT_FILE="$SCRIPT_DIR/.openclaw/api-contract.json"' in content
 
 
+def test_codex_ralph_sh_defaults_to_sequential_tracks(tmp_path):
+    spec = _make_spec()
+    write_codex_bundle(tmp_path, spec)
+
+    content = (tmp_path / "ralph.sh").read_text()
+    # Default mode is sequential — backend first, then frontend
+    assert 'PARALLEL_TRACKS:-false' in content
+    # Sequential path runs backend then frontend without &
+    seq_idx = content.index('# Sequential mode (default)')
+    be_idx = content.index('run_track_plan "backend" "$BACKEND_PLAN_FILE"', seq_idx)
+    fe_idx = content.index('run_track_plan "frontend" "$FRONTEND_PLAN_FILE"', be_idx + 1)
+    assert fe_idx > be_idx
+    # Parallel path is gated behind PARALLEL_TRACKS=true
+    assert 'PARALLEL_TRACKS:-false' in content[:content.index('run_track_plan "frontend" "$FRONTEND_PLAN_FILE" "$START_FROM" &')]
+
+
 def test_codex_ralph_sh_only_requires_npx_outside_dry_run(tmp_path):
     spec = _make_spec()
     write_codex_bundle(tmp_path, spec)

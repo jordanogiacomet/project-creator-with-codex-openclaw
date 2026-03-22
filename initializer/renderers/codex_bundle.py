@@ -1243,18 +1243,27 @@ else
     run_track_plan "shared" "$SHARED_PLAN_FILE" "$START_FROM" || FAILURES=$((FAILURES + 1))
 
     if [[ $FAILURES -eq 0 ]]; then
-        frontend_failed=0
-        backend_failed=0
+        if [[ "${{PARALLEL_TRACKS:-false}}" == "true" ]]; then
+            # Parallel mode (opt-in via PARALLEL_TRACKS=true)
+            frontend_failed=0
+            backend_failed=0
 
-        run_track_plan "frontend" "$FRONTEND_PLAN_FILE" "$START_FROM" &
-        FRONTEND_PID=$!
-        run_track_plan "backend" "$BACKEND_PLAN_FILE" "$START_FROM" &
-        BACKEND_PID=$!
+            run_track_plan "frontend" "$FRONTEND_PLAN_FILE" "$START_FROM" &
+            FRONTEND_PID=$!
+            run_track_plan "backend" "$BACKEND_PLAN_FILE" "$START_FROM" &
+            BACKEND_PID=$!
 
-        wait "$FRONTEND_PID" || frontend_failed=1
-        wait "$BACKEND_PID" || backend_failed=1
+            wait "$FRONTEND_PID" || frontend_failed=1
+            wait "$BACKEND_PID" || backend_failed=1
 
-        FAILURES=$((FAILURES + frontend_failed + backend_failed))
+            FAILURES=$((FAILURES + frontend_failed + backend_failed))
+        else
+            # Sequential mode (default): backend first, then frontend
+            run_track_plan "backend" "$BACKEND_PLAN_FILE" "$START_FROM" || FAILURES=$((FAILURES + 1))
+            if [[ $FAILURES -eq 0 ]]; then
+                run_track_plan "frontend" "$FRONTEND_PLAN_FILE" "$START_FROM" || FAILURES=$((FAILURES + 1))
+            fi
+        fi
     fi
 
     if [[ $FAILURES -eq 0 ]]; then
