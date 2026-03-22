@@ -516,6 +516,9 @@ enforce_owned_files() {{
         return 0
     fi
 
+    # Only check tracked files modified vs HEAD.  Untracked (new) files are
+    # handled by the git-cat-file guard below — we never delete files that
+    # don't exist in HEAD because they may belong to a parallel track.
     changed_files=$(cd "$SCRIPT_DIR" && git diff --name-only HEAD 2>/dev/null || true)
     if [[ -z "$changed_files" ]]; then
         return 0
@@ -550,9 +553,17 @@ enforce_owned_files() {{
         done <<< "$owned_files"
 
         if [[ "$is_owned" == false ]]; then
-            echo "  [$track] REVERT: $changed (not in owned_files)"
-            (cd "$SCRIPT_DIR" && git checkout HEAD -- "$changed" 2>/dev/null || true)
-            reverted="$reverted $changed"
+            # BUG-041: In parallel tracks, another Codex may have created
+            # files that don't belong to THIS track but DO belong to the
+            # other.  Only revert files that exist in HEAD (restore original
+            # version).  Files that are new (not in HEAD) were created by
+            # either this Codex or a parallel one — leave them alone so the
+            # owning track's enforcement and commit can handle them.
+            if (cd "$SCRIPT_DIR" && git cat-file -e HEAD:"$changed" 2>/dev/null); then
+                echo "  [$track] REVERT: $changed (not in owned_files)"
+                (cd "$SCRIPT_DIR" && git checkout HEAD -- "$changed" 2>/dev/null || true)
+                reverted="$reverted $changed"
+            fi
         fi
     done <<< "$changed_files"
 
