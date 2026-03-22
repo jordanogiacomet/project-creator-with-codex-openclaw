@@ -106,6 +106,12 @@ def _story_execution(story: dict[str, Any]) -> dict[str, Any]:
         return derived
 
     merged = dict(execution)
+    # BUG-040 defense-in-depth: when the story has expected_files, the
+    # derived file-classification fields are authoritative (they reflect
+    # the latest story_engine logic).  For stories without expected_files
+    # the derivation returns empty lists, so we keep existing values.
+    has_files = bool(story.get("expected_files"))
+    file_fields = {"frontend_files", "backend_files", "shared_files", "integration_files"}
     for field in (
         "tracks",
         "primary_track",
@@ -117,8 +123,14 @@ def _story_execution(story: dict[str, Any]) -> dict[str, Any]:
         "integration_files",
         "modes",
     ):
-        if field not in merged:
-            merged[field] = derived.get(field)
+        if field in file_fields:
+            if has_files and field in derived:
+                merged[field] = derived[field]
+            elif field not in merged:
+                merged[field] = derived.get(field)
+        else:
+            if field not in merged:
+                merged[field] = derived.get(field)
 
     return merged
 
