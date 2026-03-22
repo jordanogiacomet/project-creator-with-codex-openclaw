@@ -1259,10 +1259,10 @@ else
             FAILURES=$((FAILURES + frontend_failed + backend_failed))
         else
             # Sequential mode (default): backend first, then frontend
+            # Both tracks always run — blocked slices in one track should
+            # not prevent the other from executing.
             run_track_plan "backend" "$BACKEND_PLAN_FILE" "$START_FROM" || FAILURES=$((FAILURES + 1))
-            if [[ $FAILURES -eq 0 ]]; then
-                run_track_plan "frontend" "$FRONTEND_PLAN_FILE" "$START_FROM" || FAILURES=$((FAILURES + 1))
-            fi
+            run_track_plan "frontend" "$FRONTEND_PLAN_FILE" "$START_FROM" || FAILURES=$((FAILURES + 1))
         fi
     fi
 
