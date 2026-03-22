@@ -1,6 +1,6 @@
 # Specwright — Full Repository Analysis
 
-**Date**: 2026-03-18 (updated 2026-03-21, Session 30)
+**Date**: 2026-03-18 (updated 2026-03-22, Session 31)
 **Test suite**: 475/475 passed
 **Generated projects inspected**: `output/todo-app`, `output/todo-app-design`, `output/taskflow` (node-api), `output/newshub-cms` (Payload), `output/dentaldesk` (--assist flow), `output/editorial-control-center` (Payload editorial)
 
@@ -116,6 +116,36 @@ When the main agent makes code changes, record the new state here before moving 
 | OPT-006 | ADDED | `ensure_node_modules()` in ralph.sh — auto-runs `npm ci` (lockfile) or `npm install` when `node_modules/` is missing |
 | OPT-007 | ADDED | `git_init_scaffold()` resume mode — commits scaffold updates from `prepare` regeneration before slice execution, enabling DONE-slice reuse across runs |
 | TESTS-014 | ADDED | 2 new tests for OPT-006/007 (475 total, was 473) |
+| BUG-039 | **FIXED** | Typecheck `.next/types` guard + progress files protection in enforcement |
+| BUG-041 | **FIXED** | `enforce_owned_files()` deleted files created by parallel tracks (not in HEAD). **Fix**: added `git cat-file -e HEAD:"$changed"` guard — only reverts files that exist in HEAD, new files from other tracks left alone |
+| BUG-040 | PLANNED | `prepare` does not re-derive execution metadata from latest story_engine. Old specs keep stale `execution` values. Plan exists: re-derive in `prepare_project.py` + fix merge precedence in `openclaw_bundle.py` |
+| E2E-008 | PARTIAL | Run 10: 13 DONE / 1 BLOCKED (BE-ST-007 Codex hallucination) / interrupted by Codex API network crash after 13/38 slices |
+| STRATEGY-001 | **DECIDED** | Pipeline strategy shift: sequential execution by default, smaller specs (≤15 slices), parallelism as opt-in only. Conservative pipeline that completes 95% > ambitious one needing 3 re-runs |
+
+---
+
+## Session 31 — BUG-041 Fix + Strategy Decision (2026-03-22)
+
+### What happened
+
+1. **BUG-041 identified and fixed**: `enforce_owned_files()` was using `git checkout HEAD --` to revert unauthorized files, which also deleted new files created by parallel tracks (not in HEAD). Fix: added `git cat-file -e HEAD:"$changed"` guard so only files existing in HEAD get reverted.
+2. **Run 10 executed** (resume from Run 7 spec): 13 DONE, 1 BLOCKED (BE-ST-007 — Codex hallucinated invalid Payload v3 internal imports), interrupted by Codex API network disconnection at 13/38 slices.
+3. **BUG-041 fix validated**: BE-ST-005 (previously BLOCKED by BUG-041 in Run 9b) now passes.
+4. **Strategy decision**: After 6 sessions of hotfixes (BUG-036→041), decided to shift to conservative execution:
+   - **Sequential by default** (shared → BE → FE → integration) — eliminates race condition class entirely
+   - **Smaller specs** (≤15 slices) — reduces failure surface
+   - **Parallelism as opt-in** — only for simple specs where it's proven stable
+
+### Key insight
+
+The pipeline concept is proven (owned_files, retry loop, resume mode, track splitting all work). But running everything in the most aggressive mode creates disproportionate debugging cost. Almost all bugs from BUG-036 to BUG-041 were caused by parallelism on the same worktree or specs inheriting stale metadata.
+
+### Pending for next session
+
+- [ ] Commit BUG-041 fix (codex_bundle.py — uncommitted)
+- [ ] Implement BUG-040 (plan ready at `/home/node/.claude/plans/unified-mapping-alpaca.md`)
+- [ ] Implement sequential execution mode in ralph.sh
+- [ ] Re-run E2E with sequential mode on a smaller spec
 
 ---
 
