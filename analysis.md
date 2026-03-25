@@ -1,7 +1,7 @@
 # Specwright — Full Repository Analysis
 
-**Date**: 2026-03-18 (updated 2026-03-23, Session 35)
-**Test suite**: 484/484 passed
+**Date**: 2026-03-18 (updated 2026-03-25, Session 35)
+**Test suite**: 487/487 passed
 **Generated projects inspected**: `output/todo-app`, `output/todo-app-design`, `output/taskflow` (node-api), `output/newshub-cms` (Payload), `output/dentaldesk` (--assist flow), `output/editorial-control-center` (Payload editorial)
 
 ### Handoff For Future Agents
@@ -137,13 +137,14 @@ When the main agent makes code changes, record the new state here before moving 
 | E2E-011 | **MILESTONE** | Run 14: **37/37 slices DONE — 100% E2E.** Backend 14/14, Frontend 12/12, Integration 10/10. Zero BLOCKED. BUG-045a (force-dynamic), BUG-045b (Docker Postgres), BUG-046 (vitest alias) all confirmed fixed. First complete E2E run in project history |
 | GUARD-003 | ADDED | Payload v3 type boundary added to authentication, roles, draft-publish, and preview stories — `Access` signature, `req.user` null-check, hook types. Reduces Codex retry loops observed in Run 14 (BE-ST-008 3x, BE-ST-010 2x, IN-ST-011 3x) |
 | TESTS-019 | ADDED | 2 new tests for GUARD-003 (484 total, was 482) |
-| BUG-047 | **OPEN** | `prepare` regenerates `output/` from scratch, destroying all Codex-generated files from completed runs. Run 14 achieved 37/37 DONE but all source files were lost — only scaffold remains. Progress files also wiped (BUG-043 fix only preserves during `prepare`, not against a second `prepare` invocation). Root cause: no protection against re-running `prepare` on a directory that already has Codex output. Needs: either (a) `prepare` detects existing Codex output and refuses/warns, (b) Codex output is committed to a local git branch that survives regeneration, or (c) `prepare` backs up the full project before overwriting |
+| BUG-047 | **FIXED** | `prepare` now auto-creates a git bundle backup when Codex slice commits are detected; `initializer new` refuses to overwrite a directory with existing slice commits; `ralph.sh` tags successful runs with `run-complete-<timestamp>` for recovery |
+| TESTS-020 | ADDED | 3 new tests for BUG-047: run-complete tag, prepare backup, create_output_dir guard (487 total, was 484) |
 
 ---
 
 ## Session 35 — Run 14: 100% E2E + Payload Type Boundaries (2026-03-23)
 
-**Test suite**: 484/484 passed (2 new)
+**Test suite**: 487/487 passed (5 new: 2 GUARD-003 + 3 BUG-047)
 
 ### Run 14 — Results
 
@@ -186,11 +187,10 @@ Boundary text instructs Codex on exact `Access` return type, `req.user` nullabil
 - **Problem**: All Codex-generated files (public site pages, auth pages, lib modules, collections) were lost. Only scaffold files remain (timestamps: 15:56, before Run 14 started at 16:03). Progress directory also wiped.
 - **Root cause**: `prepare` regenerates the entire `output/<project>/` directory from scratch. Any subsequent `prepare` invocation (or accidental re-run) destroys all Codex work. BUG-043 fix only preserves progress *during* a single `prepare` run, not across invocations.
 - **Impact**: Run 14 results are confirmed (37/37 DONE via logs) but the generated project cannot be runtime-validated — source files are gone.
-- **Status**: OPEN — needs fix before next run
+- **Status**: FIXED — three-layer protection: (1) `prepare` auto-creates git bundle backup when slice commits detected, (2) `initializer new` refuses to overwrite directory with slice commits, (3) `ralph.sh` tags successful runs with `run-complete-<timestamp>`
 
 ### What still needs to happen
-1. **Fix BUG-047**: Protect Codex output from `prepare` re-runs (guard/backup/branch)
-2. **Run 15**: Re-run after BUG-047 fix, then runtime-validate
+1. **Run 15**: Re-run with BUG-047 protection, then runtime-validate
 3. **Second project E2E**: Run pipeline on a different stack (e.g. node-api + React) to confirm generality
 4. **Regression suite**: Script that runs N known projects and compares DONE/BLOCKED counts
 

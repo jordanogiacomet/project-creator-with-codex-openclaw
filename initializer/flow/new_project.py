@@ -1,6 +1,7 @@
 from pathlib import Path
 import json
 import re
+import subprocess
 from typing import Any
 
 import yaml
@@ -91,6 +92,27 @@ def prompt_boolean(label: str) -> tuple[str, bool]:
 
 def create_output_dir(slug):
     path = Path("output") / slug
+    git_dir = path / ".git"
+    if git_dir.exists():
+        result = subprocess.run(
+            ["git", "log", "--oneline", "--all"],
+            cwd=path,
+            capture_output=True,
+            text=True,
+        )
+        slice_commits = [
+            l for l in result.stdout.splitlines() if "slice:" in l
+        ]
+        if slice_commits:
+            print(
+                f"\n⚠ Warning: {path} contains "
+                f"{len(slice_commits)} Codex slice commit(s)."
+            )
+            print("  Re-creating will destroy generated code.")
+            print(
+                "  Use 'prepare' instead, or delete the directory manually.\n"
+            )
+            raise SystemExit(1)
     path.mkdir(parents=True, exist_ok=True)
     return path
 

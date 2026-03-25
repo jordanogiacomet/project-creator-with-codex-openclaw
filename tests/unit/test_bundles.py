@@ -7,10 +7,13 @@ Updated to validate:
 """
 
 import json
+import subprocess
 from pathlib import Path
+from unittest.mock import patch
 
 from initializer.ai.refine_engine import refine_spec
 from initializer.engine.story_engine import generate_stories
+from initializer.flow.new_project import create_output_dir
 from initializer.renderers.codex_bundle import write_codex_bundle
 from initializer.renderers.openclaw_bundle import write_openclaw_bundle
 
@@ -1325,3 +1328,78 @@ def test_codex_ralph_sh_starts_postgres_before_integration_gate(tmp_path):
     assert gate_idx != -1, "ralph.sh must have integration gate validation"
     assert pg_idx < gate_idx, "Postgres startup must come before integration gate validation"
     assert "pg_isready" in content
+
+
+def test_codex_ralph_sh_tags_successful_run(tmp_path):
+    """BUG-047: ralph.sh must tag successful runs for recovery."""
+    spec = _make_spec()
+    write_codex_bundle(tmp_path, spec)
+
+    content = (tmp_path / "ralph.sh").read_text()
+    assert "run-complete-" in content
+    assert "git tag" in content
+
+
+def test_prepare_backs_up_codex_output(tmp_path):
+    """BUG-047: prepare must create git bundle when slice commits exist."""
+    from initializer.flow.prepare_project import run_prepare_project
+
+    # Create a minimal project that prepare can process
+    project = tmp_path / "myproject"
+    project.mkdir()
+    spec = _make_spec()
+    (project / "spec.json").write_text(
+        json.dumps(spec, indent=2), encoding="utf-8"
+    )
+    (project / "progress.txt").write_text("", encoding="utf-8")
+
+    # Simulate a git repo with slice commits
+    subprocess.run(["git", "init", "-q"], cwd=project, check=True)
+    subprocess.run(["git", "add", "-A"], cwd=project, check=True)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "scaffold", "--allow-empty"],
+        cwd=project,
+        check=True,
+        env={**__import__("os").environ, "GIT_AUTHOR_NAME": "test", "GIT_COMMITTER_NAME": "test",
+             "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_EMAIL": "t@t"},
+    )
+    (project / "generated.ts").write_text("export const x = 1;")
+    subprocess.run(["git", "add", "-A"], cwd=project, check=True)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "slice: BE-ST-004"],
+        cwd=project,
+        check=True,
+        env={**__import__("os").environ, "GIT_AUTHOR_NAME": "test", "GIT_COMMITTER_NAME": "test",
+             "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_EMAIL": "t@t"},
+    )
+
+    run_prepare_project(str(project))
+
+    bundle_path = tmp_path / "myproject-backup.bundle"
+    assert bundle_path.exists(), "prepare must create a git bundle when slice commits exist"
+
+
+def test_create_output_dir_blocks_overwrite_of_codex_output(tmp_path, monkeypatch):
+    """BUG-047: new project must refuse to overwrite directory with Codex slice commits."""
+    monkeypatch.chdir(tmp_path)
+    project = tmp_path / "output" / "myproject"
+    project.mkdir(parents=True)
+
+    # Simulate a git repo with slice commits
+    env = {**__import__("os").environ, "GIT_AUTHOR_NAME": "test", "GIT_COMMITTER_NAME": "test",
+           "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_EMAIL": "t@t"}
+    subprocess.run(["git", "init", "-q"], cwd=project, check=True)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "scaffold", "--allow-empty"],
+        cwd=project, check=True, env=env,
+    )
+    (project / "code.ts").write_text("export const x = 1;")
+    subprocess.run(["git", "add", "-A"], cwd=project, check=True)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "slice: FE-ST-006"],
+        cwd=project, check=True, env=env,
+    )
+
+    import pytest
+    with pytest.raises(SystemExit):
+        create_output_dir("myproject")

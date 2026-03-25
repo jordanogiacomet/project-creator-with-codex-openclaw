@@ -1308,6 +1308,9 @@ echo ""
 if [[ $FAILURES -gt 0 ]]; then
     exit 1
 fi
+
+# Tag successful run for recovery
+(cd "$SCRIPT_DIR" && git tag "run-complete-$(date +%Y%m%dT%H%M%S)" 2>/dev/null || true)
 '''
 
 

@@ -17,6 +17,7 @@ Usage:
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -498,6 +499,32 @@ def run_prepare_project(path: str) -> int:
     else:
         print("  Package is complete.")
         print("")
+
+    # --- BUG-047: backup Codex output before regeneration ---
+    git_dir = project_dir / ".git"
+    if git_dir.exists():
+        result = subprocess.run(
+            ["git", "log", "--oneline", "--all"],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+        )
+        slice_commits = [
+            l for l in result.stdout.splitlines() if "slice:" in l
+        ]
+        if slice_commits:
+            print(
+                f"  ⚠ Detected {len(slice_commits)} Codex slice commit(s)"
+            )
+            bundle_path = (
+                project_dir.parent / f"{project_dir.name}-backup.bundle"
+            )
+            subprocess.run(
+                ["git", "bundle", "create", str(bundle_path), "--all"],
+                cwd=project_dir,
+                capture_output=True,
+            )
+            print(f"  Backed up git history to {bundle_path}")
 
     # --- Rewrite .codex/AGENTS.md ---
     print("Writing consolidated .codex/AGENTS.md...")
